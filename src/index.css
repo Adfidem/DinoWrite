@@ -1,0 +1,46 @@
+@import "tailwindcss"; /* The new, simplified import for Tailwind CSS v4 */
+
+/* Your Custom Styles below */
+body {
+  font-family: 'Inter', sans-serif;
+}
+.editor-content {
+  min-height: 200px;
+  border: 1px solid #e2e8f0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: white;
+  resize: vertical;
+  overflow-y: auto;
+}
+.entity-link {
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: 600;
+}
+.entity-link:hover {
+  background-color: #bfdbfe;
+  border-radius: 0.25rem;
+}
+.cross-link {
+  color: #10b981;
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: 600;
+}
+.cross-link:hover {
+  background-color: #d1fae5;
+  border-radius: 0.25rem;
+}
+.hover-preview {
+  position: absolute;
+  background-color: #333;
+  color: white;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  z-index: 100;
+  max-width: 250px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
