@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
+// Import icons from lucide-react
+import { Link, Image, MinusCircle, Bold, Italic, List, ListOrdered, Heading, HelpCircle, Eye, EyeOff, Folder, FileText, Search, Plus, X, Pencil, Trash2, ChevronRight, CornerDownRight, ExternalLink, Text } from 'lucide-react';
+
+
 // Helper functions for selection management
 const saveSelection = () => {
     if (window.getSelection) {
@@ -28,7 +32,7 @@ const ConflictResolutionModal = ({ isOpen, conflicts, onResolve, onCancel }) => 
             // Initialize resolutions: default to 'keep_original' for safety
             const initialResolutions = {};
             conflicts.documents.forEach(doc => {
-                initialResolutions[`doc-${doc.id}`] = 'keep_original'; // Corrected typo here
+                initialResolutions[`doc-${doc.id}`] = 'keep_original';
             });
             conflicts.entities.forEach(entity => {
                 initialResolutions[`entity-${entity.id}`] = 'keep_original';
@@ -38,7 +42,7 @@ const ConflictResolutionModal = ({ isOpen, conflicts, onResolve, onCancel }) => 
                     initialResolutions[`textblock-${block.id}`] = 'keep_original';
                 });
             }
-            if (conflicts.folders) { // New: Initialize for folders
+            if (conflicts.folders) {
                 conflicts.folders.forEach(folder => {
                     initialResolutions[`folder-${folder.id}`] = 'keep_original';
                 });
@@ -306,9 +310,7 @@ const RemoveAssignmentModal = ({ isOpen, blocks, onRemoveBlock, onCancel }) => {
                                 className="text-red-600 hover:text-red-800 transition-colors duration-200"
                                 title="Remove this assignment"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
+                                <X className="h-5 w-5" />
                             </button>
                         </li>
                     ))}
@@ -345,7 +347,8 @@ const CreateDocumentModal = ({ isOpen, folders, onCreate, onCancel }) => {
         if (title.trim()) {
             onCreate(title.trim(), selectedFolderId === 'root' ? null : selectedFolderId);
         } else {
-            alert('Document title cannot be empty.');
+            // Replaced alert with a simple console error or message within the modal if needed
+            console.error('Document title cannot be empty.');
         }
     };
 
@@ -425,7 +428,7 @@ const CreateFolderModal = ({ isOpen, folders, onCreate, onCancel }) => {
         if (folderName.trim()) {
             onCreate(folderName.trim(), selectedParentFolderId === 'root' ? null : selectedParentFolderId);
         } else {
-            alert('Folder name cannot be empty.');
+            console.error('Folder name cannot be empty.');
         }
     };
 
@@ -488,7 +491,7 @@ const CreateFolderModal = ({ isOpen, folders, onCreate, onCancel }) => {
 
 
 // FolderItem Component for recursive rendering
-const FolderItem = ({ folder, documents, folders, onDocumentSelect, currentDocumentId, documentSearchQuery, onEditDocument, onDeleteDocument, onEditFolder, onDeleteFolder, onMoveDocument }) => {
+const FolderItem = ({ folder, documents, folders, onDocumentSelect, currentDocumentId, documentSearchQuery, onEditDocument, onDeleteDocument, onEditFolder, onDeleteFolder, onMoveDocument, editingDocument, saveEditedDocument, cancelEditDocument }) => {
     const [isOpen, setIsOpen] = useState(folder.isOpen || false);
     const [isDragOver, setIsDragOver] = useState(false); // State for drag-over visual feedback
 
@@ -542,25 +545,16 @@ const FolderItem = ({ folder, documents, folders, onDocumentSelect, currentDocum
                 onDrop={handleDrop}
             >
                 <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 mr-2 transform transition-transform ${isOpen ? 'rotate-90' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-                    </svg>
+                    <ChevronRight className={`h-5 w-5 mr-2 transform transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                    <Folder className="h-5 w-5 mr-2" />
                     <span>{folder.name}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                     <button onClick={(e) => { e.stopPropagation(); onEditFolder(folder); }} className="text-yellow-400 hover:text-yellow-300" title="Edit Folder">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                            <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-                        </svg>
+                        <Pencil className="h-5 w-5" />
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); onDeleteFolder(folder.id); }} className="text-red-400 hover:text-red-300" title="Delete Folder">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 11-2 0v6a1 1 0 112 0V8z" clipRule="evenodd" />
-                        </svg>
+                        <Trash2 className="h-5 w-5" />
                     </button>
                 </div>
             </div>
@@ -579,7 +573,10 @@ const FolderItem = ({ folder, documents, folders, onDocumentSelect, currentDocum
                             onDeleteDocument={onDeleteDocument}
                             onEditFolder={onEditFolder}
                             onDeleteFolder={onDeleteFolder}
-                            onMoveDocument={onMoveDocument} // Pass down move function
+                            onMoveDocument={onMoveDocument}
+                            editingDocument={editingDocument} // Pass editingDocument
+                            saveEditedDocument={saveEditedDocument} // Pass saveEditedDocument
+                            cancelEditDocument={cancelEditDocument} // Pass cancelEditDocument
                         />
                     ))}
                     {childDocuments
@@ -595,28 +592,40 @@ const FolderItem = ({ folder, documents, folders, onDocumentSelect, currentDocum
                                 className={`flex items-center justify-between p-2 mb-1 rounded-md cursor-pointer transition duration-200
                                     ${doc.id === currentDocumentId ? 'bg-indigo-700' : 'bg-gray-700 hover:bg-gray-600'}`}
                             >
-                                <span onClick={() => onDocumentSelect(doc.id)} className="flex-grow text-md">
-                                    {doc.title}
-                                </span>
+                                {editingDocument && editingDocument.id === doc.id ? (
+                                    <input
+                                        type="text"
+                                        value={editingDocument.title}
+                                        onChange={(e) => onEditDocument({ ...editingDocument, title: e.target.value })}
+                                        onBlur={() => saveEditedDocument(doc.id, editingDocument.title)}
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter') {
+                                                saveEditedDocument(doc.id, editingDocument.title);
+                                                e.target.blur(); // Remove focus
+                                            }
+                                        }}
+                                        className="flex-grow p-1 rounded-md bg-gray-600 text-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                        autoFocus
+                                    />
+                                ) : (
+                                    <span onClick={() => onDocumentSelect(doc.id)} className="flex-grow text-md">
+                                        {doc.title}
+                                    </span>
+                                )}
                                 <div className="flex items-center space-x-2">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onEditDocument(doc); }}
                                         className="text-yellow-400 hover:text-yellow-300"
                                         title="Edit Document"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                                            <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-                                        </svg>
+                                        <Pencil className="h-5 w-5" />
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onDeleteDocument(doc.id); }}
                                         className="text-red-400 hover:text-red-300"
                                         title="Delete Document"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 11-2 0v6a1 1 0 112 0V8z" clipRule="evenodd" />
-                                        </svg>
+                                        <Trash2 className="h-5 w-5" />
                                     </button>
                                 </div>
                             </div>
@@ -638,6 +647,9 @@ const ShortcutsModal = ({ isOpen, onClose }) => {
                 <ul className="list-disc pl-5 mb-4 text-gray-700 space-y-2">
                     <li><strong>Ctrl + B:</strong> Bold text</li>
                     <li><strong>Ctrl + I:</strong> Italic text</li>
+                    <li><strong>Ctrl + L:</strong> Insert Link</li>
+                    <li><strong>Ctrl + G:</strong> Insert Image</li>
+                    <li><strong>Ctrl + Shift + L:</strong> Unlink (remove link)</li>
                     <li><strong>Ctrl + Shift + 7:</strong> Bullet List</li>
                     <li><strong>Ctrl + Shift + 8:</strong> Numbered List</li>
                     <li><strong>Ctrl + Shift + 0:</strong> Paragraph (Normal Text)</li>
@@ -655,6 +667,161 @@ const ShortcutsModal = ({ isOpen, onClose }) => {
                         className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-200"
                     >
                         Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Custom Modal for Link Insertion
+const LinkModal = ({ isOpen, onConfirm, onCancel }) => {
+    const [url, setUrl] = useState('');
+    const [text, setText] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            // Get selected text if any
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                setText(selection.toString());
+            } else {
+                setText('');
+            }
+            setUrl('');
+        }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const handleSubmit = () => {
+        if (url.trim()) {
+            onConfirm(url.trim(), text.trim());
+        } else {
+            console.error('URL cannot be empty.'); // Use console.error instead of alert
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+                <h2 className="text-2xl font-bold mb-4 text-gray-900">Insert Hyperlink</h2>
+                <div className="mb-4">
+                    <label htmlFor="linkText" className="block text-gray-700 text-sm font-bold mb-2">
+                        Link Text:
+                    </label>
+                    <input
+                        type="text"
+                        id="linkText"
+                        className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                    />
+                </div>
+                <div className="mb-6">
+                    <label htmlFor="linkUrl" className="block text-gray-700 text-sm font-bold mb-2">
+                        URL:
+                    </label>
+                    <input
+                        type="url"
+                        id="linkUrl"
+                        placeholder="https://example.com"
+                        className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') handleSubmit();
+                        }}
+                    />
+                </div>
+                <div className="flex justify-end space-x-4">
+                    <button
+                        onClick={onCancel}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition duration-200"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={!url.trim()}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                    >
+                        Insert Link
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Custom Modal for Image Insertion
+const ImageModal = ({ isOpen, onConfirm, onCancel }) => {
+    const [imageUrl, setImageUrl] = useState('');
+    const [altText, setAltText] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setImageUrl('');
+            setAltText('');
+        }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const handleSubmit = () => {
+        if (imageUrl.trim()) {
+            onConfirm(imageUrl.trim(), altText.trim());
+        } else {
+            console.error('Image URL cannot be empty.'); // Use console.error instead of alert
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+                <h2 className="text-2xl font-bold mb-4 text-gray-900">Insert Image</h2>
+                <div className="mb-4">
+                    <label htmlFor="imageUrl" className="block text-gray-700 text-sm font-bold mb-2">
+                        Image URL:
+                    </label>
+                    <input
+                        type="url"
+                        id="imageUrl"
+                        placeholder="https://placehold.co/600x400"
+                        className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') handleSubmit();
+                        }}
+                    />
+                </div>
+                <div className="mb-6">
+                    <label htmlFor="altText" className="block text-gray-700 text-sm font-bold mb-2">
+                        Alt Text (for accessibility):
+                    </label>
+                    <input
+                        type="text"
+                        id="altText"
+                        placeholder="A descriptive text for the image"
+                        className="w-full p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                        value={altText}
+                        onChange={(e) => setAltText(e.target.value)}
+                    />
+                </div>
+                <div className="flex justify-end space-x-4">
+                    <button
+                        onClick={onCancel}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition duration-200"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={!imageUrl.trim()}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                    >
+                        Insert Image
                     </button>
                 </div>
             </div>
@@ -695,6 +862,8 @@ const App = () => {
 
     const [isCreateDocumentModalOpen, setIsCreateDocumentModalOpen] = useState(false);
     const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
+    const [isLinkModalOpen, setIsLinkModalOpen] = useState(false); // New: Link modal state
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false); // New: Image modal state
 
 
     const [newEntityPrimaryName, setNewEntityPrimaryName] = useState('');
@@ -727,13 +896,13 @@ const App = () => {
 
     const [isRootDragOver, setIsRootDragOver] = useState(false); // New state for root drag over
 
-    const [showDocumentsSidebar, setShowDocumentsSidebar] = useState(true); // New: state for document sidebar visibility
-    const [showEntitiesSidebar, setShowEntitiesSidebar] = useState(true);   // New: state for entities sidebar visibility
-    const [showPreview, setShowPreview] = useState(true);                  // New: state for preview window visibility
+    const [showDocumentsSidebar, setShowDocumentsSidebar] = useState(true);
+    const [showEntitiesSidebar, setShowEntitiesSidebar] = useState(true);
+    const [showPreview, setShowPreview] = useState(true);
 
-    const [showShortcutsModal, setShowShortcutsModal] = useState(false); // New: state for shortcuts modal
-    const [showFontDropdown, setShowFontDropdown] = useState(false); // New: state for font dropdown
-    const [showHeadingDropdown, setShowHeadingDropdown] = useState(false); // New: state for heading dropdown
+    const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+    const [showFontDropdown, setShowFontDropdown] = useState(false);
+    const [showHeadingDropdown, setShowHeadingDropdown] = useState(false);
 
 
     // --- Persistence (localStorage) ---
@@ -887,7 +1056,7 @@ const App = () => {
                 }
             });
         }
-    }, [currentDocumentId, currentDocument]); // Changed dependency from currentDocument.content to currentDocument to satisfy ESLint
+    }, [currentDocumentId, currentDocument]);
 
     // This useEffect saves the user's current selection whenever the cursor moves
     // or text is typed in the contentEditable area. This is essential for
@@ -905,7 +1074,7 @@ const App = () => {
                 editorElement.removeEventListener('keyup', handleUserSelectionChange);
             };
         }
-    }, [currentDocumentId]); // Only setup/teardown when document changes.
+    }, [currentDocumentId]);
 
     // --- Rich Text Formatting Functions ---
     const applyFormatting = (command, value = null) => {
@@ -930,6 +1099,90 @@ const App = () => {
         setShowHeadingDropdown(false); // Close dropdown after selection
     };
 
+    const handleInsertLink = () => {
+        savedSelectionRange.current = saveSelection(); // Save current selection
+        setIsLinkModalOpen(true);
+    };
+
+    const handleConfirmLink = (url, text) => {
+        if (savedSelectionRange.current) {
+            restoreSelection(savedSelectionRange.current);
+        } else {
+            // Fallback: put cursor at end of editor if no selection was saved
+            const range = document.createRange();
+            range.selectNodeContents(contentEditableRef.current);
+            range.collapse(false);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        // Check if there's selected text; if not, insert text and then apply link
+        const selection = window.getSelection();
+        if (selection.isCollapsed) {
+            const textNode = document.createTextNode(text || url); // Use provided text or URL as fallback
+            const range = selection.getRangeAt(0);
+            range.insertNode(textNode);
+            range.selectNodeContents(textNode); // Select the newly inserted text
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+        applyFormatting('createLink', url);
+        savedSelectionRange.current = null; // Clear saved selection
+        setIsLinkModalOpen(false);
+    };
+
+    const handleUnlink = () => {
+        applyFormatting('unlink');
+    };
+
+    const handleInsertImage = () => {
+        savedSelectionRange.current = saveSelection(); // Save current selection
+        setIsImageModalOpen(true);
+    };
+
+    const handleConfirmImage = (url, altText) => {
+        if (!contentEditableRef.current) return;
+
+        if (savedSelectionRange.current) {
+            restoreSelection(savedSelectionRange.current);
+        } else {
+            // Fallback: put cursor at end of editor if no selection was saved
+            const range = document.createRange();
+            range.selectNodeContents(contentEditableRef.current);
+            range.collapse(false);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = altText || '';
+        img.style.maxWidth = '100%'; // Ensure images don't overflow
+        img.style.height = 'auto'; // Maintain aspect ratio
+        img.style.display = 'block'; // Block-level for better spacing
+        img.style.margin = '10px 0'; // Add some margin
+
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents(); // Remove any selected content
+            range.insertNode(img);
+
+            // Move cursor after the image
+            range.setStartAfter(img);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        handleContentInput(); // Sync DOM changes back to React state
+        savedSelectionRange.current = null; // Clear saved selection
+        setIsImageModalOpen(false);
+    };
+
+
     // --- Keyboard Shortcuts Listener ---
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -937,6 +1190,9 @@ const App = () => {
                 // Formatting shortcuts
                 if (e.key === 'b') { e.preventDefault(); toggleBold(); }
                 if (e.key === 'i') { e.preventDefault(); toggleItalic(); }
+                if (e.key === 'l') { e.preventDefault(); handleInsertLink(); } // Ctrl+L for Link
+                if (e.key === 'g') { e.preventDefault(); handleInsertImage(); } // Ctrl+G for Image
+                if (e.shiftKey && e.key === 'L') { e.preventDefault(); handleUnlink(); } // Ctrl+Shift+L for Unlink
                 if (e.shiftKey && e.key === '7') { e.preventDefault(); toggleUnorderedList(); } // Ctrl+Shift+7 for bullet
                 if (e.shiftKey && e.key === '8') { e.preventDefault(); toggleOrderedList(); } // Ctrl+Shift+8 for numbered
                 if (e.shiftKey && e.key === '0') { e.preventDefault(); setParagraph(); } // Ctrl+Shift+0 for paragraph
@@ -950,6 +1206,8 @@ const App = () => {
                 setIsRemoveAssignmentModalOpen(false);
                 setIsCreateDocumentModalOpen(false);
                 setIsCreateFolderModalOpen(false);
+                setIsLinkModalOpen(false); // Close link modal
+                setIsImageModalOpen(false); // Close image modal
                 setShowFontDropdown(false);
                 setShowHeadingDropdown(false);
             }
@@ -957,7 +1215,7 @@ const App = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [toggleBold, toggleItalic, toggleUnorderedList, toggleOrderedList, setParagraph, setHeading]);
+    }, [toggleBold, toggleItalic, toggleUnorderedList, toggleOrderedList, setParagraph, setHeading, handleInsertLink, handleInsertImage, handleUnlink]);
 
 
     // --- Folder Management ---
@@ -966,14 +1224,16 @@ const App = () => {
     };
 
     const handleCreateFolder = (name, parentId) => {
-        const newFolder = {
-            id: Date.now().toString(),
-            name: name,
-            parentId: parentId,
-            isOpen: false,
-        };
-        setFolders([...folders, newFolder]);
-        setIsCreateFolderModalOpen(false);
+        if (name.trim()) {
+            const newFolder = {
+                id: Date.now().toString(),
+                name: name,
+                parentId: parentId,
+                isOpen: false,
+            };
+            setFolders([...folders, newFolder]);
+            setIsCreateFolderModalOpen(false);
+        }
     };
 
     const handleDeleteFolder = (id) => {
@@ -981,11 +1241,13 @@ const App = () => {
         const childFolders = folders.filter(folder => folder.parentId === id);
 
         if (docsInFolder.length > 0) {
-            alert("Cannot delete a folder that contains documents. Please move or delete its documents first.");
+            // Replaced alert with console.error
+            console.error("Cannot delete a folder that contains documents. Please move or delete its documents first.");
             return;
         }
         if (childFolders.length > 0) {
-            alert("Cannot delete a folder that contains sub-folders. Please delete its sub-folders first.");
+            // Replaced alert with console.error
+            console.error("Cannot delete a folder that contains sub-folders. Please delete its sub-folders first.");
             return;
         }
 
@@ -993,7 +1255,7 @@ const App = () => {
     };
 
     const handleEditFolder = (folderToEdit) => {
-        const newName = prompt("Enter new folder name:", folderToEdit.name);
+        const newName = prompt("Enter new folder name:", folderToEdit.name); // Keep prompt for simplicity here
         if (newName && newName.trim()) {
             setFolders(folders.map(folder =>
                 folder.id === folderToEdit.id ? { ...folder, name: newName.trim() } : folder
@@ -1221,11 +1483,11 @@ const App = () => {
     const handleAssignSelectedText = () => {
         const selection = window.getSelection();
         if (!selection.rangeCount || selection.isCollapsed) {
-            alert("Please select some text in the editor to assign.");
+            console.error("Please select some text in the editor to assign."); // Use console.error instead of alert
             return;
         }
         if (!currentDocument) {
-            alert("Please select or create a document first.");
+            console.error("Please select or create a document first."); // Use console.error instead of alert
             return;
         }
 
@@ -1256,7 +1518,7 @@ const App = () => {
 
         const range = selection.getRangeAt(0);
         if (!contentEditableRef.current.contains(range.commonAncestorContainer)) {
-            alert("Selected text is not within the editable document content.");
+            console.error("Selected text is not within the editable document content."); // Use console.error instead of alert
             setIsEntitySelectionModalOpen(false);
             return;
         }
@@ -1307,7 +1569,7 @@ const App = () => {
     // --- Remove Text Block Assignments ---
     const handleRemoveAssignmentClick = () => {
         if (!currentDocument || !contentEditableRef.current) {
-            alert("Please select a document.");
+            console.error("Please select a document."); // Use console.error instead of alert
             return;
         }
 
@@ -1322,7 +1584,7 @@ const App = () => {
         }
 
         if (!targetNode || !contentEditableRef.current.contains(targetNode)) {
-            alert("Please place your cursor or select text within an assigned block.");
+            console.error("Please place your cursor or select text within an assigned block."); // Use console.error instead of alert
             return;
         }
 
@@ -1347,7 +1609,7 @@ const App = () => {
         });
 
         if (blocksAtCursor.length === 0) {
-            alert("No assigned text blocks found at the current cursor position or within the selection.");
+            console.error("No assigned text blocks found at the current cursor position or within the selection."); // Use console.error instead of alert
             return;
         }
         savedSelectionRange.current = saveSelection(); // Save selection before opening modal
@@ -1482,9 +1744,26 @@ const App = () => {
             return match;
         });
 
+        // Basic Markdown-like parsing for preview (ensure this doesn't conflict with editor's contenteditable HTML)
         finalHtml = finalHtml.replace(/^#\s(.+)/gm, '<h1>$1</h1>');
         finalHtml = finalHtml.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         finalHtml = finalHtml.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        // Convert <br> to newlines for list item detection (simple approach, might need refinement)
+        finalHtml = finalHtml.replace(/<br\s*\/?>/g, '\n');
+        // Simple list conversion for preview (basic, might need more robust markdown parser for complex cases)
+        finalHtml = finalHtml.replace(/(\n|^)\*\s(.+)/g, '$1<li>$2</li>'); // Bullet points
+        finalHtml = finalHtml.replace(/(\n|^)\d+\.\s(.+)/g, '$1<li>$2</li>'); // Numbered lists
+
+        // Wrap list items in <ul> or <ol> if they're not already (very basic)
+        if (finalHtml.includes('<li>') && !finalHtml.includes('<ul>') && !finalHtml.includes('<ol>')) {
+            if (finalHtml.startsWith('<li>')) { // Assume unordered if starting with bullet format
+                finalHtml = `<ul>${finalHtml}</ul>`;
+            } else if (finalHtml.match(/^\d+\.\s/)) { // Assume ordered if starting with number format
+                finalHtml = `<ol>${finalHtml}</ol>`;
+            }
+        }
+
+        finalHtml = finalHtml.replace(/\n/g, '<br/>'); // Convert newlines back to <br> for HTML rendering
 
         return finalHtml;
     }, [entities, documents, showHighlights]);
@@ -1529,7 +1808,7 @@ const App = () => {
                         setCurrentDocumentId(entity.link);
                     } else {
                         console.warn("Entity link target document not found:", entity.link);
-                        alert("Linked document not found. It might have been deleted or moved.");
+                        // Replaced alert with console.warn
                     }
                 }
             }
@@ -1543,10 +1822,11 @@ const App = () => {
                 console.log("Attempting to navigate to internal document via crosslink. Target ID:", docId);
                 const targetDoc = documents.find(doc => doc.id === docId);
                 if (targetDoc) {
+                    blockToScrollToRef.current = docId; // Changed to docId for document scrolling
                     setCurrentDocumentId(docId);
                 } else {
                     console.warn("Crosslink target document not found:", docId);
-                    alert("Linked document not found. It might have been deleted or moved.");
+                    // Replaced alert with console.warn
                 }
             }
             return;
@@ -1565,7 +1845,7 @@ const App = () => {
                     setCurrentDocumentId(docId);
                 } else {
                     console.warn("Backlinked document not found:", docId);
-                    alert("Backlinked document not found. It might have been deleted or moved.");
+                    // Replaced alert with console.warn
                 }
             }
         }
@@ -1584,7 +1864,7 @@ const App = () => {
             element.click();
             document.body.removeChild(element);
         } else {
-            alert("Please select a document to export.");
+            console.error("Please select a document to export."); // Use console.error instead of alert
         }
     };
 
@@ -1648,18 +1928,15 @@ const App = () => {
                     }
 
                 } else {
-                    alert('Invalid JSON structure: Expected "documents", "entities", "assignedTextBlocks", and "folders" arrays.');
-                    console.error('Invalid JSON structure for import:', importedData);
+                    console.error('Invalid JSON structure: Expected "documents", "entities", "assignedTextBlocks", and "folders" arrays.'); // Use console.error instead of alert
                 }
             } catch (error) {
-                alert('Failed to import data. Please ensure it is a valid JSON file.');
-                console.error('Error parsing imported JSON:', error);
+                console.error('Failed to import data. Please ensure it is a valid JSON file.', error); // Use console.error instead of alert
             }
             event.target.value = '';
         };
         reader.onerror = (error) => {
-            alert('Error reading file.');
-            console.error('Error reading file:', error);
+            console.error('Error reading file:', error); // Use console.error instead of alert
         };
         reader.readAsText(file);
     };
@@ -1854,7 +2131,7 @@ const App = () => {
     // --- Insert Backlinks for an Entity ---
     const handleInsertBacklinks = (entityId) => {
         if (!contentEditableRef.current || !currentDocument) {
-            alert("Please select a document to insert backlinks into.");
+            console.error("Please select a document to insert backlinks into."); // Use console.error instead of alert
             return;
         }
 
@@ -1862,7 +2139,7 @@ const App = () => {
         const entity = entities.find(e => e.id === entityId);
 
         if (!entity || relatedBlocks.length === 0) {
-            alert(`No text blocks assigned to "${entity ? entity.primaryName : 'this entity'}".`);
+            console.error(`No text blocks assigned to "${entity ? entity.primaryName : 'this entity'}".`); // Use console.error instead of alert
             return;
         }
 
@@ -1936,7 +2213,7 @@ const App = () => {
     // --- Function to refresh all backlink blocks in the current document ---
     const handleRefreshAllBacklinks = () => {
         if (!contentEditableRef.current || !currentDocument) {
-            alert("No document selected to refresh backlinks.");
+            console.error("No document selected to refresh backlinks."); // Use console.error instead of alert
             return;
         }
 
@@ -1995,9 +2272,9 @@ const App = () => {
             if (currentSelection) { // Restore original cursor position
                 restoreSelection(currentSelection);
             }
-            alert("Backlinks refreshed!");
+            console.log("Backlinks refreshed!"); // Use console.log instead of alert
         } else {
-            alert("No backlinks found or no changes needed.");
+            console.log("No backlinks found or no changes needed."); // Use console.log instead of alert
         }
     };
 
@@ -2037,9 +2314,7 @@ const App = () => {
                             className="p-1 rounded-full hover:bg-gray-700 transition duration-200"
                             title={showDocumentsSidebar ? "Collapse Documents" : "Expand Documents"}
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-indigo-300 transform transition-transform ${showDocumentsSidebar ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                            </svg>
+                            {showDocumentsSidebar ? <ChevronRight className="h-6 w-6 text-indigo-300 transform rotate-180" /> : <ChevronRight className="h-6 w-6 text-indigo-300" />}
                         </button>
                     </div>
 
@@ -2078,26 +2353,29 @@ const App = () => {
 
                             {/* Document Search Field */}
                             <div className="mb-4">
-                                <input
-                                    type="text"
-                                    placeholder="Search documents..."
-                                    className="w-full p-2 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    value={documentSearchQuery}
-                                    onChange={(e) => setDocumentSearchQuery(e.target.value)}
-                                />
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search documents..."
+                                        className="w-full p-2 pl-10 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        value={documentSearchQuery}
+                                        onChange={(e) => setDocumentSearchQuery(e.target.value)}
+                                    />
+                                </div>
                             </div>
                             <div className="mb-4 flex space-x-2">
                                 <button
                                     onClick={handleOpenCreateDocumentModal}
                                     className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-200"
                                 >
-                                    Create Document
+                                    <Plus className="inline-block h-5 w-5 mr-1" /> Doc
                                 </button>
                                 <button
                                     onClick={handleOpenCreateFolderModal}
                                     className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-200"
                                 >
-                                    Create Folder
+                                    <Folder className="inline-block h-5 w-5 mr-1" /> Folder
                                 </button>
                             </div>
                             <div
@@ -2112,7 +2390,7 @@ const App = () => {
                                 ) : getFilteredAndOrganizedDocuments().length === 0 && !documentSearchQuery ? (
                                     <p className="text-gray-400 p-2">No documents or folders yet. Create one!</p>
                                 ) : (
-                                    getFilteredAndOrganizedDocuments(null).map(item => (
+                                    getFilteredAndOrganizedDocuments().map(item => (
                                         item.type === 'folder' ? (
                                             <FolderItem
                                                 key={item.data.id}
@@ -2126,14 +2404,17 @@ const App = () => {
                                                 onDeleteDocument={handleDeleteDocument}
                                                 onEditFolder={handleEditFolder}
                                                 onDeleteFolder={handleDeleteFolder}
-                                                onMoveDocument={handleMoveDocument} // Pass down move function
+                                                onMoveDocument={handleMoveDocument}
+                                                editingDocument={editingDocument}
+                                                saveEditedDocument={saveEditedDocument}
+                                                cancelEditDocument={cancelEditDocument}
                                             />
                                         ) : (
                                             <div
                                                 key={item.data.id}
-                                                draggable="true" // Make documents draggable
+                                                draggable="true"
                                                 onDragStart={(e) => {
-                                                    e.dataTransfer.setData('text/plain', item.data.id); // Store document ID
+                                                    e.dataTransfer.setData('text/plain', item.data.id);
                                                     e.dataTransfer.effectAllowed = 'move';
                                                 }}
                                                 className={`flex items-center justify-between p-3 mb-2 rounded-md cursor-pointer transition duration-200
@@ -2146,14 +2427,17 @@ const App = () => {
                                                         onChange={(e) => setEditingDocument({ ...editingDocument, title: e.target.value })}
                                                         onBlur={() => saveEditedDocument(item.data.id, editingDocument.title)}
                                                         onKeyPress={(e) => {
-                                                            if (e.key === 'Enter') saveEditedDocument(item.data.id, editingDocument.title);
+                                                            if (e.key === 'Enter') {
+                                                                saveEditedDocument(item.data.id, editingDocument.title);
+                                                                e.target.blur(); // Remove focus
+                                                            }
                                                         }}
                                                         className="flex-grow p-1 rounded-md bg-gray-600 text-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
                                                         autoFocus
                                                     />
                                                 ) : (
-                                                    <span onClick={() => handleDocumentSelect(item.data.id)} className="flex-grow text-lg">
-                                                        {item.data.title}
+                                                    <span onClick={() => handleDocumentSelect(item.data.id)} className="flex-grow text-lg flex items-center">
+                                                        <FileText className="h-5 w-5 mr-2" /> {item.data.title}
                                                     </span>
                                                 )}
                                                 <div className="flex items-center space-x-2">
@@ -2162,25 +2446,20 @@ const App = () => {
                                                         className="text-yellow-400 hover:text-yellow-300"
                                                         title="Edit Document"
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                                                            <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-                                                        </svg>
+                                                        <Pencil className="h-5 w-5" />
                                                     </button>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleDeleteDocument(item.data.id); }}
                                                         className="text-red-400 hover:text-red-300"
                                                         title="Delete Document"
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 11-2 0v6a1 1 0 112 0V8z" clipRule="evenodd" />
-                                                        </svg>
+                                                        <Trash2 className="h-5 w-5" />
                                                     </button>
                                                 </div>
                                             </div>
                                         )
                                     ))
-                                    )}
+                                )}
                             </div>
                         </>
                     )}
@@ -2203,21 +2482,35 @@ const App = () => {
                                     className="p-2 rounded-md bg-gray-200 hover:bg-gray-300 transition duration-200 text-gray-700"
                                     title="Bold (Ctrl+B)"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M9.707 3.293a1 1 0 010 1.414L6.414 8H13a1 1 0 110 2H6.414l3.293 3.293a1 1 0 01-1.414 1.414l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 0z" clipRule="evenodd" />
-                                        <path d="M12 4.5v11h-1.5v-11H12zM8 4.5v11H6.5v-11H8z" />
-                                    </svg>
+                                    <Bold className="h-5 w-5" />
                                 </button>
                                 <button
                                     onClick={toggleItalic}
                                     className="p-2 rounded-md bg-gray-200 hover:bg-gray-300 transition duration-200 text-gray-700"
                                     title="Italic (Ctrl+I)"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M6 3.75a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5v10.5h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75v-12z" clipRule="evenodd" />
-                                        <path fillRule="evenodd" d="M11 3.75a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5v10.5h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75v-12z" />
-                                        <path d="M14 3.75a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5v10.5h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75v-12z" />
-                                    </svg>
+                                    <Italic className="h-5 w-5" />
+                                </button>
+                                <button
+                                    onClick={handleInsertLink}
+                                    className="p-2 rounded-md bg-gray-200 hover:bg-gray-300 transition duration-200 text-gray-700"
+                                    title="Insert Link (Ctrl+L)"
+                                >
+                                    <Link className="h-5 w-5" />
+                                </button>
+                                <button
+                                    onClick={handleUnlink}
+                                    className="p-2 rounded-md bg-gray-200 hover:bg-gray-300 transition duration-200 text-gray-700"
+                                    title="Remove Link (Ctrl+Shift+L)"
+                                >
+                                    <MinusCircle className="h-5 w-5" />
+                                </button>
+                                <button
+                                    onClick={handleInsertImage}
+                                    className="p-2 rounded-md bg-gray-200 hover:bg-gray-300 transition duration-200 text-gray-700"
+                                    title="Insert Image (Ctrl+G)"
+                                >
+                                    <Image className="h-5 w-5" />
                                 </button>
                                 <div className="relative">
                                     <button
@@ -2225,20 +2518,32 @@ const App = () => {
                                         className="p-2 rounded-md bg-gray-200 hover:bg-gray-300 transition duration-200 text-gray-700 flex items-center"
                                         title="Heading/Paragraph"
                                     >
-                                        <span className="font-bold">H</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                        </svg>
+                                        <Heading className="h-5 w-5" />
+                                        <ChevronRight className="h-4 w-4 ml-1 transform rotate-90" />
                                     </button>
                                     {showHeadingDropdown && (
                                         <div className="absolute left-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                                            <button onClick={setParagraph} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block">Paragraph</button>
-                                            <button onClick={() => setHeading('h1')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block">Heading 1</button>
-                                            <button onClick={() => setHeading('h2')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block">Heading 2</button>
-                                            <button onClick={() => setHeading('h3')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block">Heading 3</button>
-                                            <button onClick={() => setHeading('h4')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block">Heading 4</button>
-                                            <button onClick={() => setHeading('h5')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block">Heading 5</button>
-                                            <button onClick={() => setHeading('h6')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block">Heading 6</button>
+                                            <button onClick={setParagraph} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block flex items-center">
+                                                <Text className="h-4 w-4 mr-2" /> Paragraph
+                                            </button>
+                                            <button onClick={() => setHeading('h1')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block flex items-center">
+                                                <Heading className="h-4 w-4 mr-2" /> Heading 1
+                                            </button>
+                                            <button onClick={() => setHeading('h2')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block flex items-center">
+                                                <Heading className="h-4 w-4 mr-2" /> Heading 2
+                                            </button>
+                                            <button onClick={() => setHeading('h3')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block flex items-center">
+                                                <Heading className="h-4 w-4 mr-2" /> Heading 3
+                                            </button>
+                                            <button onClick={() => setHeading('h4')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block flex items-center">
+                                                <Heading className="h-4 w-4 mr-2" /> Heading 4
+                                            </button>
+                                            <button onClick={() => setHeading('h5')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block flex items-center">
+                                                <Heading className="h-4 w-4 mr-2" /> Heading 5
+                                            </button>
+                                            <button onClick={() => setHeading('h6')} className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 block flex items-center">
+                                                <Heading className="h-4 w-4 mr-2" /> Heading 6
+                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -2247,18 +2552,14 @@ const App = () => {
                                     className="p-2 rounded-md bg-gray-200 hover:bg-gray-300 transition duration-200 text-gray-700"
                                     title="Bullet List (Ctrl+Shift+7)"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M3 4.25A.75.75 0 013.75 3h12.5A.75.75 0 0117 3.75v.5A.75.75 0 0116.25 5H3.75A.75.75 0 013 4.25v-.5zM3 9.25A.75.75 0 013.75 8h12.5A.75.75 0 0117 8.75v.5A.75.75 0 0116.25 10H3.75A.75.75 0 013 9.25v-.5zM3 14.25A.75.75 0 013.75 13h12.5A.75.75 0 0117 13.75v.5A.75.75 0 0116.25 15H3.75A.75.75 0 013 14.25v-.5z" clipRule="evenodd" />
-                                    </svg>
+                                    <List className="h-5 w-5" />
                                 </button>
                                 <button
                                     onClick={toggleOrderedList}
                                     className="p-2 rounded-md bg-gray-200 hover:bg-gray-300 transition duration-200 text-gray-700"
                                     title="Numbered List (Ctrl+Shift+8)"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M12 4a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM4 5a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zM12 9a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM4 10a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zM12 14a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM4 15a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1z" clipRule="evenodd" />
-                                    </svg>
+                                    <ListOrdered className="h-5 w-5" />
                                 </button>
                                 <div className="relative">
                                     <button
@@ -2270,9 +2571,7 @@ const App = () => {
                                             <path d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-3.293-3.293a1 1 0 010-1.414z" />
                                         </svg>
                                         <span className="font-semibold">Aa</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                        </svg>
+                                        <ChevronRight className="h-4 w-4 ml-1 transform rotate-90" />
                                     </button>
                                     {showFontDropdown && (
                                         <div className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
@@ -2308,6 +2607,7 @@ const App = () => {
                                 }`}
                                 title={showHighlights ? "Hide assigned text highlights" : "Show assigned text highlights"}
                             >
+                                {showHighlights ? <EyeOff className="inline-block h-5 w-5 mr-1" /> : <Eye className="inline-block h-5 w-5 mr-1" />}
                                 {showHighlights ? 'Hide Highlights' : 'Show Highlights'}
                             </button>
                             <button
@@ -2315,7 +2615,7 @@ const App = () => {
                                 className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-200"
                                 title="Refresh content of all backlink blocks in this document"
                             >
-                                Refresh Backlinks
+                                <CornerDownRight className="inline-block h-5 w-5 mr-1" /> Refresh Backlinks
                             </button>
                             <button
                                 onClick={() => setShowPreview(!showPreview)}
@@ -2331,9 +2631,7 @@ const App = () => {
                                 className="p-2 rounded-full bg-gray-400 hover:bg-gray-500 transition duration-200 text-gray-800 ml-2"
                                 title="View Keyboard Shortcuts"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                                </svg>
+                                <HelpCircle className="h-5 w-5" />
                             </button>
                         </div>
 
@@ -2384,9 +2682,7 @@ const App = () => {
                             className="p-1 rounded-full hover:bg-gray-700 transition duration-200"
                             title={showEntitiesSidebar ? "Collapse Entities" : "Expand Entities"}
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-purple-300 transform transition-transform ${showEntitiesSidebar ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M6 5l7 7-7 7" />
-                            </svg>
+                            {showEntitiesSidebar ? <ChevronRight className="h-6 w-6 text-purple-300" /> : <ChevronRight className="h-6 w-6 text-purple-300 transform rotate-180" />}
                         </button>
                     </div>
 
@@ -2394,13 +2690,16 @@ const App = () => {
                         <>
                         {/* Entity Search Field */}
                         <div className="mb-4">
-                            <input
-                                type="text"
-                                placeholder="Search entities..."
-                                className="w-full p-2 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                value={entitySearchQuery}
-                                onChange={(e) => setEntitySearchQuery(e.target.value)}
-                            />
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search entities..."
+                                    className="w-full p-2 pl-10 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    value={entitySearchQuery}
+                                    onChange={(e) => setEntitySearchQuery(e.target.value)}
+                                />
+                            </div>
                         </div>
                         <div className="mb-4 space-y-2">
                             <input
@@ -2425,7 +2724,7 @@ const App = () => {
                                     onClick={handleAddNewAlias}
                                     className="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-200"
                                 >
-                                    Add Alias
+                                    <Plus className="inline-block h-5 w-5" /> Alias
                                 </button>
                             </div>
                             {newEntityAliases.length > 0 && (
@@ -2447,9 +2746,7 @@ const App = () => {
                                                 className="text-red-400 hover:text-red-300"
                                                 title="Remove Alias"
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 11-2 0v6a1 1 0 112 0V8z" clipRule="evenodd" />
-                                                </svg>
+                                                <X className="h-5 w-5" />
                                             </button>
                                         </div>
                                     ))}
@@ -2546,9 +2843,7 @@ const App = () => {
                                                             title="Insert Alias"
                                                         >
                                                             Alias
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                                                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                                            </svg>
+                                                            <ChevronRight className="h-4 w-4 ml-1 transform rotate-90" />
                                                         </button>
                                                         {openDropdownEntityId === entity.id && (
                                                             <ul className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg z-10 overflow-hidden">
@@ -2581,19 +2876,14 @@ const App = () => {
                                                     className="text-yellow-400 hover:text-yellow-300"
                                                     title="Edit"
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                                                        <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-                                                    </svg>
+                                                    <Pencil className="h-5 w-5" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteEntity(entity.id)}
                                                     className="text-red-400 hover:text-red-300"
                                                     title="Delete"
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 11-2 0v6a1 1 0 112 0V8z" clipRule="evenodd" />
-                                                    </svg>
+                                                    <Trash2 className="h-5 w-5" />
                                                 </button>
                                             </div>
                                         </div>
@@ -2644,6 +2934,20 @@ const App = () => {
                     folders={folders}
                     onCreate={handleCreateFolder}
                     onCancel={() => setIsCreateFolderModalOpen(false)}
+                />
+
+                {/* Link Modal */}
+                <LinkModal
+                    isOpen={isLinkModalOpen}
+                    onConfirm={handleConfirmLink}
+                    onCancel={() => { setIsLinkModalOpen(false); savedSelectionRange.current = null; }}
+                />
+
+                {/* Image Modal */}
+                <ImageModal
+                    isOpen={isImageModalOpen}
+                    onConfirm={handleConfirmImage}
+                    onCancel={() => { setIsImageModalOpen(false); savedSelectionRange.current = null; }}
                 />
 
                 {/* Shortcuts Modal */}
@@ -2713,6 +3017,8 @@ const App = () => {
                 .editor-content p { margin-bottom: 1em; }
                 .editor-content b, .editor-content strong { font-weight: bold; }
                 .editor-content i, .editor-content em { font-style: italic; }
+                .editor-content a { color: #2563eb; text-decoration: underline; cursor: pointer; }
+                .editor-content img { max-width: 100%; height: auto; display: block; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
                 `}
                 </style>
             </div>
