@@ -3,6 +3,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 // Import icons from lucide-react
 import { Link, Image, MinusCircle, Bold, Italic, List, ListOrdered, Heading, HelpCircle, Eye, EyeOff, Folder, FileText, Search, Plus, X, Pencil, Trash2, ChevronRight, CornerDownRight, ExternalLink, Text } from 'lucide-react';
 
+// Base URL for your backend API
+// If your frontend is served from the same domain as your backend API through Nginx,
+// you can use a relative path like '/api'. Otherwise, specify the full URL.
+const BASE_URL = '/api'; // Assuming Nginx proxies /api to http://localhost:3001
 
 // Helper functions for selection management
 const saveSelection = () => {
@@ -23,202 +27,78 @@ const restoreSelection = (range) => {
     }
 };
 
-// Custom Modal Component for Conflict Resolution
-const ConflictResolutionModal = ({ isOpen, conflicts, onResolve, onCancel }) => {
-    const [resolutions, setResolutions] = useState({});
-
-    useEffect(() => {
-        if (isOpen) {
-            // Initialize resolutions: default to 'keep_original' for safety
-            const initialResolutions = {};
-            conflicts.documents.forEach(doc => {
-                initialResolutions[`doc-${doc.id}`] = 'keep_original';
-            });
-            conflicts.entities.forEach(entity => {
-                initialResolutions[`entity-${entity.id}`] = 'keep_original';
-            });
-            if (conflicts.textBlocks) {
-                conflicts.textBlocks.forEach(block => {
-                    initialResolutions[`textblock-${block.id}`] = 'keep_original';
-                });
-            }
-            if (conflicts.folders) {
-                conflicts.folders.forEach(folder => {
-                    initialResolutions[`folder-${folder.id}`] = 'keep_original';
-                });
-            }
-            setResolutions(initialResolutions);
+// --- API Utility Functions ---
+const apiFetch = async (endpoint, options = {}) => {
+    try {
+        const response = await fetch(`${BASE_URL}${endpoint}`, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            ...options,
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
+            throw new Error(errorData.message || `API error: ${response.status}`);
         }
-    }, [isOpen, conflicts]);
+        // For DELETE requests, response might be empty (204 No Content)
+        if (response.status === 204) {
+            return null;
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`API call to ${endpoint} failed:`, error);
+        throw error; // Re-throw to be handled by calling components
+    }
+};
 
+
+// Custom Modal Component for Conflict Resolution (now simplified/removed logic, just for display)
+const ConflictResolutionModal = ({ isOpen, conflicts, onResolve, onCancel }) => {
+    // This modal is now largely informational/placeholder as the backend /api/import
+    // directly overwrites data. The conflict resolution logic is less relevant for this bulk overwrite.
     if (!isOpen) return null;
-
-    const handleResolutionChange = (id, type, choice) => {
-        setResolutions(prev => ({
-            ...prev,
-            [`${type}-${id}`]: choice
-        }));
-    };
-
-    const handleApply = () => {
-        onResolve(resolutions);
-    };
 
     return (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <h2 className="text-2xl font-bold mb-4 text-gray-900">Import Conflict Resolution</h2>
+                <h2 className="text-2xl font-bold mb-4 text-gray-900">Import Information</h2>
                 <p className="mb-4 text-gray-700">
-                    The imported data contains items with IDs that already exist. Please choose whether to "Keep Original" or "Overwrite with Imported" for each conflicting item.
+                    The imported data will overwrite existing data. Proceed with import?
                 </p>
 
                 {conflicts.documents.length > 0 && (
                     <div className="mb-6">
-                        <h3 className="text-xl font-semibold mb-3 text-indigo-700">Conflicting Documents:</h3>
-                        {conflicts.documents.map(doc => (
-                            <div key={doc.id} className="flex flex-col md:flex-row items-start md:items-center justify-between bg-gray-100 p-3 rounded-md mb-2">
-                                <span className="font-medium text-gray-800 mb-2 md:mb-0 md:w-1/2 break-words">
-                                    Document: "{doc.title}" (ID: {doc.id})
-                                </span>
-                                <div className="flex space-x-4">
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            name={`doc-${doc.id}`}
-                                            value="keep_original"
-                                            checked={resolutions[`doc-${doc.id}`] === 'keep_original'}
-                                            onChange={() => handleResolutionChange(doc.id, 'doc', 'keep_original')}
-                                            className="form-radio text-indigo-600"
-                                        />
-                                        <span className="ml-2 text-gray-700">Keep Original</span>
-                                    </label>
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            name={`doc-${doc.id}`}
-                                            value="overwrite"
-                                            checked={resolutions[`doc-${doc.id}`] === 'overwrite'}
-                                            onChange={() => handleResolutionChange(doc.id, 'doc', 'overwrite')}
-                                            className="form-radio text-indigo-600"
-                                        />
-                                        <span className="ml-2 text-gray-700">Overwrite with Imported</span>
-                                    </label>
-                                </div>
-                            </div>
-                        ))}
+                        <h3 className="text-xl font-semibold mb-3 text-indigo-700">Documents to overwrite:</h3>
+                        <ul className="list-disc pl-5">
+                            {conflicts.documents.map(doc => <li key={doc.id} className="text-gray-800">{doc.title} (ID: {doc.id})</li>)}
+                        </ul>
                     </div>
                 )}
-
                 {conflicts.entities.length > 0 && (
                     <div className="mb-6">
-                        <h3 className="text-xl font-semibold mb-3 text-purple-700">Conflicting Entities:</h3>
-                        {conflicts.entities.map(entity => (
-                            <div key={entity.id} className="flex flex-col md:flex-row items-start md:items-center justify-between bg-gray-100 p-3 rounded-md mb-2">
-                                <span className="font-medium text-gray-800 mb-2 md:mb-0 md:w-1/2 break-words">
-                                    Entity: "{entity.primaryName}" (ID: {entity.id})
-                                </span>
-                                <div className="flex space-x-4">
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            name={`entity-${entity.id}`}
-                                            value="keep_original"
-                                            checked={resolutions[`entity-${entity.id}`] === 'keep_original'}
-                                            onChange={() => handleResolutionChange(entity.id, 'entity', 'keep_original')}
-                                            className="form-radio text-purple-600"
-                                        />
-                                        <span className="ml-2 text-gray-700">Keep Original</span>
-                                    </label>
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            name={`entity-${entity.id}`}
-                                            value="overwrite"
-                                            checked={resolutions[`entity-${entity.id}`] === 'overwrite'}
-                                            onChange={() => handleResolutionChange(entity.id, 'entity', 'overwrite')}
-                                            className="form-radio text-purple-600"
-                                        />
-                                        <span className="ml-2 text-gray-700">Overwrite with Imported</span>
-                                    </label>
-                                </div>
-                            </div>
-                        ))}
+                        <h3 className="text-xl font-semibold mb-3 text-purple-700">Entities to overwrite:</h3>
+                        <ul className="list-disc pl-5">
+                            {conflicts.entities.map(entity => <li key={entity.id} className="text-gray-800">{entity.primaryName} (ID: {entity.id})</li>)}
+                        </ul>
                     </div>
                 )}
-
                 {conflicts.textBlocks && conflicts.textBlocks.length > 0 && (
                     <div className="mb-6">
-                        <h3 className="text-xl font-semibold mb-3 text-emerald-700">Conflicting Text Blocks:</h3>
-                        {conflicts.textBlocks.map(block => (
-                            <div key={block.id} className="flex flex-col md:flex-row items-start md:items-center justify-between bg-gray-100 p-3 rounded-md mb-2">
-                                <span className="font-medium text-gray-800 mb-2 md:mb-0 md:w-1/2 break-words">
-                                    Block: "{block.plainText.substring(0, 50)}..." (ID: {block.id})
-                                </span>
-                                <div className="flex space-x-4">
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            name={`textblock-${block.id}`}
-                                            value="keep_original"
-                                            checked={resolutions[`textblock-${block.id}`] === 'keep_original'}
-                                            onChange={() => handleResolutionChange(block.id, 'textblock', 'keep_original')}
-                                            className="form-radio text-emerald-600"
-                                        />
-                                        <span className="ml-2 text-gray-700">Keep Original</span>
-                                    </label>
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            name={`textblock-${block.id}`}
-                                            value="overwrite"
-                                            checked={resolutions[`textblock-${block.id}`] === 'overwrite'}
-                                            onChange={() => handleResolutionChange(block.id, 'textblock', 'overwrite')}
-                                            className="form-radio text-emerald-600"
-                                        />
-                                        <span className="ml-2 text-gray-700">Overwrite with Imported</span>
-                                    </label>
-                                </div>
-                            </div>
-                        ))}
+                        <h3 className="text-xl font-semibold mb-3 text-emerald-700">Text Blocks to overwrite:</h3>
+                        <ul className="list-disc pl-5">
+                            {conflicts.textBlocks.map(block => <li key={block.id} className="text-gray-800">Block ID: {block.id}, Entity: {block.entityName || 'N/A'}</li>)}
+                        </ul>
+                    </div>
+                )}
+                {conflicts.folders && conflicts.folders.length > 0 && (
+                    <div className="mb-6">
+                        <h3 className="text-xl font-semibold mb-3 text-pink-700">Folders to overwrite:</h3>
+                        <ul className="list-disc pl-5">
+                            {conflicts.folders.map(folder => <li key={folder.id} className="text-gray-800">{folder.name} (ID: {folder.id})</li>)}
+                        </ul>
                     </div>
                 )}
 
-                {conflicts.folders && conflicts.folders.length > 0 && (
-                    <div className="mb-6">
-                        <h3 className="text-xl font-semibold mb-3 text-pink-700">Conflicting Folders:</h3>
-                        {conflicts.folders.map(folder => (
-                            <div key={folder.id} className="flex flex-col md:flex-row items-start md:items-center justify-between bg-gray-100 p-3 rounded-md mb-2">
-                                <span className="font-medium text-gray-800 mb-2 md:mb-0 md:w-1/2 break-words">
-                                    Folder: "{folder.name}" (ID: {folder.id})
-                                </span>
-                                <div className="flex space-x-4">
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            name={`folder-${folder.id}`}
-                                            value="keep_original"
-                                            checked={resolutions[`folder-${folder.id}`] === 'keep_original'}
-                                            onChange={() => handleResolutionChange(folder.id, 'folder', 'keep_original')}
-                                            className="form-radio text-pink-600"
-                                        />
-                                        <span className="ml-2 text-gray-700">Keep Original</span>
-                                    </label>
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            name={`folder-${folder.id}`}
-                                            value="overwrite"
-                                            checked={resolutions[`folder-${folder.id}`] === 'overwrite'}
-                                            onChange={() => handleResolutionChange(folder.id, 'folder', 'overwrite')}
-                                            className="form-radio text-pink-600"
-                                        />
-                                        <span className="ml-2 text-gray-700">Overwrite with Imported</span>
-                                    </label>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
 
                 <div className="flex justify-end space-x-4 mt-6">
                     <button
@@ -228,10 +108,10 @@ const ConflictResolutionModal = ({ isOpen, conflicts, onResolve, onCancel }) => 
                         Cancel Import
                     </button>
                     <button
-                        onClick={handleApply}
+                        onClick={() => onResolve(true)} // Pass true to confirm overwrite
                         className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-200"
                     >
-                        Apply Choices
+                        Confirm Overwrite & Import
                     </button>
                 </div>
             </div>
@@ -592,42 +472,45 @@ const FolderItem = ({ folder, documents, folders, onDocumentSelect, currentDocum
                                 className={`flex items-center justify-between p-2 mb-1 rounded-md cursor-pointer transition duration-200
                                     ${doc.id === currentDocumentId ? 'bg-indigo-700' : 'bg-gray-700 hover:bg-gray-600'}`}
                             >
-                                {editingDocument && editingDocument.id === doc.id ? (
-                                    <input
-                                        type="text"
-                                        value={editingDocument.title}
-                                        onChange={(e) => onEditDocument({ ...editingDocument, title: e.target.value })}
-                                        onBlur={() => saveEditedDocument(doc.id, editingDocument.title)}
-                                        onKeyPress={(e) => {
-                                            if (e.key === 'Enter') {
-                                                saveEditedDocument(doc.id, editingDocument.title);
-                                                e.target.blur(); // Remove focus
-                                            }
-                                        }}
-                                        className="flex-grow p-1 rounded-md bg-gray-600 text-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                                        autoFocus
-                                    />
-                                ) : (
-                                    <span onClick={() => onDocumentSelect(doc.id)} className="flex-grow text-md">
-                                        {doc.title}
-                                    </span>
-                                )}
-                                <div className="flex items-center space-x-2">
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onEditDocument(doc); }}
-                                        className="text-yellow-400 hover:text-yellow-300"
-                                        title="Edit Document"
-                                    >
-                                        <Pencil className="h-5 w-5" />
-                                    </button>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onDeleteDocument(doc.id); }}
-                                        className="text-red-400 hover:text-red-300"
-                                        title="Delete Document"
-                                    >
-                                        <Trash2 className="h-5 w-5" />
-                                    </button>
-                                </div>
+                                {/* Corrected: Wrap the conditional content and buttons in a React.Fragment */}
+                                <>
+                                    {editingDocument && editingDocument.id === doc.id ? (
+                                        <input
+                                            type="text"
+                                            value={editingDocument.title}
+                                            onChange={(e) => onEditDocument({ ...editingDocument, title: e.target.value })}
+                                            onBlur={() => saveEditedDocument(doc.id, editingDocument.title)}
+                                            onKeyPress={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    saveEditedDocument(doc.id, editingDocument.title);
+                                                    e.target.blur(); // Remove focus
+                                                }
+                                            }}
+                                            className="flex-grow p-1 rounded-md bg-gray-600 text-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                            autoFocus
+                                        />
+                                    ) : (
+                                        <span onClick={() => onDocumentSelect(doc.id)} className="flex-grow text-md">
+                                            {doc.title}
+                                        </span>
+                                    )}
+                                    <div className="flex items-center space-x-2">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onEditDocument(doc); }}
+                                            className="text-yellow-400 hover:text-yellow-300"
+                                            title="Edit Document"
+                                        >
+                                            <Pencil className="h-5 w-5" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onDeleteDocument(doc.id); }}
+                                            className="text-red-400 hover:text-red-300"
+                                            title="Delete Document"
+                                        >
+                                            <Trash2 className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                </>
                             </div>
                         ))}
                 </div>
@@ -832,38 +715,17 @@ const ImageModal = ({ isOpen, onConfirm, onCancel }) => {
 
 // Main App Component
 const App = () => {
-    const [documents, setDocuments] = useState(() => {
-        const storedDocuments = localStorage.getItem('bookEditorDocuments');
-        const parsedDocs = storedDocuments ? JSON.parse(storedDocuments) : [];
-        // Ensure old documents have a folderId of null (root)
-        return parsedDocs.map(doc => ({ ...doc, folderId: doc.folderId !== undefined ? doc.folderId : null }));
-    });
+    const [documents, setDocuments] = useState([]);
+    const [folders, setFolders] = useState([]);
+    const [entities, setEntities] = useState([]);
+    const [assignedTextBlocks, setAssignedTextBlocks] = useState([]);
 
-    const [folders, setFolders] = useState(() => {
-        const storedFolders = localStorage.getItem('bookEditorFolders');
-        return storedFolders ? JSON.parse(storedFolders) : [];
-    });
-
-    const [entities, setEntities] = useState(() => {
-        const storedEntities = localStorage.getItem('bookEditorEntities');
-        return storedEntities ? JSON.parse(storedEntities).map(e => ({ ...e, color: e.color || '#fffacd' })) : [];
-    });
-
-    const [assignedTextBlocks, setAssignedTextBlocks] = useState(() => {
-        const storedAssignedBlocks = localStorage.getItem('bookEditorAssignedTextBlocks');
-        return storedAssignedBlocks ? JSON.parse(storedAssignedBlocks) : [];
-    });
-
-    const [currentDocumentId, setCurrentDocumentId] = useState(() => {
-        const storedDocuments = localStorage.getItem('bookEditorDocuments');
-        const parsedDocs = storedDocuments ? JSON.parse(storedDocuments) : [];
-        return parsedDocs.length > 0 ? parsedDocs[0].id : null;
-    });
+    const [currentDocumentId, setCurrentDocumentId] = useState(null);
 
     const [isCreateDocumentModalOpen, setIsCreateDocumentModalOpen] = useState(false);
     const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
-    const [isLinkModalOpen, setIsLinkModalOpen] = useState(false); // New: Link modal state
-    const [isImageModalOpen, setIsImageModalOpen] = useState(false); // New: Image modal state
+    const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
 
     const [newEntityPrimaryName, setNewEntityPrimaryName] = useState('');
@@ -876,9 +738,9 @@ const App = () => {
     const [newEntityColor, setNewEntityColor] = useState('#fffacd');
 
     const contentEditableRef = useRef(null);
-    const savedSelectionRange = useRef(null); // Used to save selection before programmatic DOM updates
+    const savedSelectionRange = useRef(null);
     const fileInputRef = useRef(null);
-    const blockToScrollToRef = useRef(null); // New: Ref to store block ID to scroll to
+    const blockToScrollToRef = useRef(null);
 
     const [openDropdownEntityId, setOpenDropdownEntityId] = useState(null);
     const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
@@ -894,7 +756,7 @@ const App = () => {
 
     const [showHighlights, setShowHighlights] = useState(true);
 
-    const [isRootDragOver, setIsRootDragOver] = useState(false); // New state for root drag over
+    const [isRootDragOver, setIsRootDragOver] = useState(false);
 
     const [showDocumentsSidebar, setShowDocumentsSidebar] = useState(true);
     const [showEntitiesSidebar, setShowEntitiesSidebar] = useState(true);
@@ -904,29 +766,41 @@ const App = () => {
     const [showFontDropdown, setShowFontDropdown] = useState(false);
     const [showHeadingDropdown, setShowHeadingDropdown] = useState(false);
 
-
-    // --- Persistence (localStorage) ---
+    // --- Data Fetching from Backend on Load ---
     useEffect(() => {
-        localStorage.setItem('bookEditorDocuments', JSON.stringify(documents));
-    }, [documents]);
+        const fetchData = async () => {
+            try {
+                const data = await apiFetch('/data');
+                setDocuments(data.documents || []);
+                setFolders(data.folders || []);
+                setEntities(data.entities || []);
+                setAssignedTextBlocks(data.assignedTextBlocks || []);
 
-    useEffect(() => {
-        localStorage.setItem('bookEditorFolders', JSON.stringify(folders));
-    }, [folders]);
-
-    useEffect(() => {
-        localStorage.setItem('bookEditorEntities', JSON.stringify(entities));
-    }, [entities]);
-
-    useEffect(() => {
-        localStorage.setItem('bookEditorAssignedTextBlocks', JSON.stringify(assignedTextBlocks));
-    }, [assignedTextBlocks]);
+                if (data.documents && data.documents.length > 0) {
+                    // Set current document to the first one, or keep existing if it's still available
+                    const firstDocId = data.documents[0].id;
+                    setCurrentDocumentId(prevId => data.documents.some(doc => doc.id === prevId) ? prevId : firstDocId);
+                } else {
+                    setCurrentDocumentId(null);
+                }
+            } catch (error) {
+                console.error("Failed to fetch initial data from backend:", error);
+                // Optionally show an error message to the user
+            }
+        };
+        fetchData();
+    }, []); // Empty dependency array means this runs once on component mount
 
 
     // --- Browser Close Prompt ---
     useEffect(() => {
         const handleBeforeUnload = (event) => {
-            event.returnValue = 'Are you sure you want to leave? Your unsaved changes might be lost.';
+            // No longer directly managing unsaved changes in localStorage,
+            // as changes are now pushed to the backend immediately.
+            // However, a simple warning can still be useful if the backend save failed silently or network issues.
+            // For now, removing the prompt as we assume backend persistence.
+            // If you implement offline capabilities or explicit save buttons, you might re-add this logic.
+            // event.returnValue = 'Are you sure you want to leave? Your unsaved changes might be lost.';
         };
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => {
@@ -943,34 +817,64 @@ const App = () => {
         setIsCreateDocumentModalOpen(true);
     };
 
-    const handleCreateDocument = (title, folderId) => {
-        if (title.trim()) {
+    const handleCreateDocument = async (title, folderId) => {
+        if (!title.trim()) {
+            console.error('Document title cannot be empty.');
+            return;
+        }
+        try {
             const newDoc = {
                 id: Date.now().toString(),
                 title: title.trim(),
                 content: '',
                 folderId: folderId,
             };
-            setDocuments([...documents, newDoc]);
-            setCurrentDocumentId(newDoc.id);
+            const createdDoc = await apiFetch('/documents', {
+                method: 'POST',
+                body: JSON.stringify(newDoc),
+            });
+            setDocuments(prevDocs => [...prevDocs, createdDoc]);
+            setCurrentDocumentId(createdDoc.id);
             setIsCreateDocumentModalOpen(false);
+        } catch (error) {
+            console.error('Error creating document:', error);
         }
     };
 
-    const handleDeleteDocument = (id) => {
-        const updatedDocuments = documents.filter(doc => doc.id !== id);
-        setDocuments(updatedDocuments);
-        setAssignedTextBlocks(prev => prev.filter(block => block.documentId !== id));
-        if (currentDocumentId === id) {
-            setCurrentDocumentId(updatedDocuments.length > 0 ? updatedDocuments[0].id : null);
+    const handleDeleteDocument = async (id) => {
+        try {
+            await apiFetch(`/documents/${id}`, { method: 'DELETE' });
+            setDocuments(prevDocs => {
+                const updatedDocs = prevDocs.filter(doc => doc.id !== id);
+                if (currentDocumentId === id) {
+                    setCurrentDocumentId(updatedDocs.length > 0 ? updatedDocs[0].id : null);
+                }
+                return updatedDocs;
+            });
+            setAssignedTextBlocks(prev => prev.filter(block => block.documentId !== id)); // Also clean up related blocks
+        } catch (error) {
+            console.error('Error deleting document:', error);
         }
     };
 
-    // New: Handle moving a document to a different folder or root
-    const handleMoveDocument = (documentId, targetFolderId) => {
-        setDocuments(prevDocs => prevDocs.map(doc =>
-            doc.id === documentId ? { ...doc, folderId: targetFolderId } : doc
-        ));
+    const handleMoveDocument = async (documentId, targetFolderId) => {
+        try {
+            const docToMove = documents.find(doc => doc.id === documentId);
+            if (!docToMove) {
+                console.error('Document to move not found.');
+                return;
+            }
+            const updatedDoc = { ...docToMove, folderId: targetFolderId };
+            await apiFetch(`/documents/${documentId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ folderId: targetFolderId }), // Only send the changed field
+            });
+            setDocuments(prevDocs => prevDocs.map(doc =>
+                doc.id === documentId ? updatedDoc : doc
+            ));
+        } catch (error) {
+            console.error('Error moving document:', error);
+        }
     };
 
 
@@ -980,11 +884,24 @@ const App = () => {
         setEditingDocument(doc);
     };
 
-    const saveEditedDocument = (id, newTitle) => {
-        setDocuments(documents.map(doc =>
-            doc.id === id ? { ...doc, title: newTitle.trim() } : doc
-        ));
-        setEditingDocument(null);
+    const saveEditedDocument = async (id, newTitle) => {
+        if (!newTitle.trim()) {
+            console.error("Document title cannot be empty.");
+            cancelEditDocument();
+            return;
+        }
+        try {
+            const updatedDoc = await apiFetch(`/documents/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ title: newTitle.trim() }),
+            });
+            setDocuments(prevDocs => prevDocs.map(doc =>
+                doc.id === id ? updatedDoc : doc
+            ));
+            setEditingDocument(null);
+        } catch (error) {
+            console.error('Error updating document title:', error);
+        }
     };
 
     const cancelEditDocument = () => {
@@ -995,12 +912,24 @@ const App = () => {
 
     // This useCallback reads the content directly from the contentEditable div
     // and updates the React state. It does NOT modify the DOM.
-    const handleContentInput = useCallback(() => {
+    // It also now sends the content to the backend.
+    const handleContentInput = useCallback(async () => {
         if (contentEditableRef.current && currentDocument) {
             const currentContentInDOM = contentEditableRef.current.innerHTML;
+            // Optimistically update UI
             setDocuments(prevDocs => prevDocs.map(doc =>
                 doc.id === currentDocument.id ? { ...doc, content: currentContentInDOM } : doc
             ));
+            // Send to backend
+            try {
+                await apiFetch(`/documents/${currentDocument.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ content: currentContentInDOM }),
+                });
+            } catch (error) {
+                console.error('Failed to save document content to backend:', error);
+                // Optionally revert UI change or notify user of save failure
+            }
         }
     }, [currentDocument]); // currentDocument needed for its ID.
 
@@ -1082,7 +1011,7 @@ const App = () => {
         savedSelectionRange.current = saveSelection(); // Save selection before command
         document.execCommand(command, false, value);
         restoreSelection(savedSelectionRange.current); // Restore selection after command
-        handleContentInput(); // Sync DOM changes back to React state
+        handleContentInput(); // Sync DOM changes back to React state and backend
     };
 
     const toggleBold = () => applyFormatting('bold');
@@ -1177,7 +1106,7 @@ const App = () => {
             selection.addRange(range);
         }
 
-        handleContentInput(); // Sync DOM changes back to React state
+        handleContentInput(); // Sync DOM changes back to React state and backend
         savedSelectionRange.current = null; // Clear saved selection
         setIsImageModalOpen(false);
     };
@@ -1223,43 +1152,64 @@ const App = () => {
         setIsCreateFolderModalOpen(true);
     };
 
-    const handleCreateFolder = (name, parentId) => {
-        if (name.trim()) {
+    const handleCreateFolder = async (name, parentId) => {
+        if (!name.trim()) {
+            console.error('Folder name cannot be empty.');
+            return;
+        }
+        try {
             const newFolder = {
                 id: Date.now().toString(),
                 name: name,
                 parentId: parentId,
-                isOpen: false,
+                isOpen: false, // Default state for new folders
             };
-            setFolders([...folders, newFolder]);
+            const createdFolder = await apiFetch('/folders', {
+                method: 'POST',
+                body: JSON.stringify(newFolder),
+            });
+            setFolders(prevFolders => [...prevFolders, createdFolder]);
             setIsCreateFolderModalOpen(false);
+        }
+        catch (error) {
+            console.error('Error creating folder:', error);
         }
     };
 
-    const handleDeleteFolder = (id) => {
+    const handleDeleteFolder = async (id) => {
         const docsInFolder = documents.filter(doc => doc.folderId === id);
         const childFolders = folders.filter(folder => folder.parentId === id);
 
         if (docsInFolder.length > 0) {
-            // Replaced alert with console.error
             console.error("Cannot delete a folder that contains documents. Please move or delete its documents first.");
             return;
         }
         if (childFolders.length > 0) {
-            // Replaced alert with console.error
             console.error("Cannot delete a folder that contains sub-folders. Please delete its sub-folders first.");
             return;
         }
-
-        setFolders(folders.filter(folder => folder.id !== id));
+        try {
+            await apiFetch(`/folders/${id}`, { method: 'DELETE' });
+            setFolders(prevFolders => prevFolders.filter(folder => folder.id !== id));
+        } catch (error) {
+            console.error('Error deleting folder:', error);
+        }
     };
 
-    const handleEditFolder = (folderToEdit) => {
-        const newName = prompt("Enter new folder name:", folderToEdit.name); // Keep prompt for simplicity here
+    const handleEditFolder = async (folderToEdit) => {
+        const newName = prompt("Enter new folder name:", folderToEdit.name);
         if (newName && newName.trim()) {
-            setFolders(folders.map(folder =>
-                folder.id === folderToEdit.id ? { ...folder, name: newName.trim() } : folder
-            ));
+            try {
+                const updatedFolder = await apiFetch(`/folders/${folderToEdit.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ name: newName.trim() }),
+                });
+                setFolders(prevFolders => prevFolders.map(folder =>
+                    folder.id === folderToEdit.id ? updatedFolder : folder
+                ));
+            } catch (error) {
+                console.error('Error editing folder:', error);
+            }
         }
     };
 
@@ -1298,7 +1248,7 @@ const App = () => {
         setNewEntityColor('#fffacd');
     };
 
-    const handleSaveEntity = () => {
+    const handleSaveEntity = async () => {
         if (!newEntityPrimaryName.trim()) {
             console.error("Primary name cannot be empty.");
             return;
@@ -1313,25 +1263,40 @@ const App = () => {
             color: newEntityColor
         };
 
-        if (editingEntity) {
-            setEntities(entities.map(entity =>
-                entity.id === editingEntity.id
-                    ? { ...entity, ...entityData }
-                    : entity
-            ));
-        } else {
-            const newEnt = {
-                id: Date.now().toString(),
-                ...entityData,
-            };
-            setEntities([...entities, newEnt]);
+        try {
+            if (editingEntity) {
+                const updatedEntity = await apiFetch(`/entities/${editingEntity.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(entityData),
+                });
+                setEntities(prevEntities => prevEntities.map(entity =>
+                    entity.id === editingEntity.id ? updatedEntity : entity
+                ));
+            } else {
+                const newEnt = {
+                    id: Date.now().toString(),
+                    ...entityData,
+                };
+                const createdEntity = await apiFetch('/entities', {
+                    method: 'POST',
+                    body: JSON.stringify(newEnt),
+                });
+                setEntities(prevEntities => [...prevEntities, createdEntity]);
+            }
+            clearEntityForm();
+        } catch (error) {
+            console.error('Error saving entity:', error);
         }
-        clearEntityForm();
     };
 
-    const handleDeleteEntity = (id) => {
-        setEntities(entities.filter(entity => entity.id !== id));
-        setAssignedTextBlocks(prev => prev.filter(block => block.entityId !== id));
+    const handleDeleteEntity = async (id) => {
+        try {
+            await apiFetch(`/entities/${id}`, { method: 'DELETE' });
+            setEntities(prevEntities => prevEntities.filter(entity => entity.id !== id));
+            setAssignedTextBlocks(prev => prev.filter(block => block.entityId !== id)); // Clean up assigned blocks
+        } catch (error) {
+            console.error('Error deleting entity:', error);
+        }
     };
 
     const startEditEntity = (entity) => {
@@ -1417,7 +1382,7 @@ const App = () => {
 
 
         if (contentChangedInDOM) {
-            handleContentInput(); // Sync the DOM changes to React state
+            handleContentInput(); // Sync the DOM changes to React state and backend
             // Restore selection after programmatic DOM update
             if (currentSelection) {
                 restoreSelection(currentSelection);
@@ -1474,20 +1439,20 @@ const App = () => {
         selection.removeAllRanges();
         selection.addRange(range);
 
-        handleContentInput(); // Sync updated DOM with React state
+        handleContentInput(); // Sync updated DOM with React state and backend
         savedSelectionRange.current = saveSelection(); // Save new cursor position
         setOpenDropdownEntityId(null);
     };
 
     // --- Assign Selected Text to Entity ---
-    const handleAssignSelectedText = () => {
+    const handleAssignSelectedText = async () => {
         const selection = window.getSelection();
         if (!selection.rangeCount || selection.isCollapsed) {
-            console.error("Please select some text in the editor to assign."); // Use console.error instead of alert
+            console.error("Please select some text in the editor to assign.");
             return;
         }
         if (!currentDocument) {
-            console.error("Please select or create a document first."); // Use console.error instead of alert
+            console.error("Please select or create a document first.");
             return;
         }
 
@@ -1495,7 +1460,7 @@ const App = () => {
         setIsEntitySelectionModalOpen(true);
     };
 
-    const handleSelectEntityForAssignment = (entityId) => {
+    const handleSelectEntityForAssignment = async (entityId) => {
         const selectedEntity = entities.find(e => e.id === entityId);
         if (!selectedEntity || !currentDocument) {
             console.error("Selected entity or current document not found for assignment.");
@@ -1518,7 +1483,7 @@ const App = () => {
 
         const range = selection.getRangeAt(0);
         if (!contentEditableRef.current.contains(range.commonAncestorContainer)) {
-            console.error("Selected text is not within the editable document content."); // Use console.error instead of alert
+            console.error("Selected text is not within the editable document content.");
             setIsEntitySelectionModalOpen(false);
             return;
         }
@@ -1538,27 +1503,31 @@ const App = () => {
         assignedSpan.className = 'assigned-text-block';
         if (showHighlights) {
             assignedSpan.classList.add('highlight');
-            // Background color is now applied via CSS class using data attribute
-            // It will pick up the color from the data-assigned-entity-color in the CSS rule
         }
         assignedSpan.appendChild(range.extractContents());
         range.insertNode(assignedSpan);
 
-        setAssignedTextBlocks(prev => [
-            ...prev,
-            {
-                id: blockId,
-                entityId: entityId,
-                documentId: currentDocument.id,
-                plainText: plainText,
-                htmlContent: assignedHtml
-            }
-        ]);
+        const newBlockData = {
+            id: blockId,
+            entityId: entityId,
+            documentId: currentDocument.id,
+            plainText: plainText,
+            htmlContent: assignedHtml
+        };
 
-        handleContentInput(); // Sync state with DOM
-        savedSelectionRange.current = saveSelection(); // Save new cursor position after DOM change
-
-        setIsEntitySelectionModalOpen(false);
+        try {
+            const createdBlock = await apiFetch('/assignedTextBlocks', {
+                method: 'POST',
+                body: JSON.stringify(newBlockData),
+            });
+            setAssignedTextBlocks(prev => [...prev, createdBlock]);
+            handleContentInput(); // Sync state with DOM and backend
+            savedSelectionRange.current = saveSelection(); // Save new cursor position after DOM change
+            setIsEntitySelectionModalOpen(false);
+        } catch (error) {
+            console.error('Error assigning text block:', error);
+            // Optionally revert DOM change if backend save failed
+        }
     };
 
     const handleCancelEntitySelection = () => {
@@ -1569,7 +1538,7 @@ const App = () => {
     // --- Remove Text Block Assignments ---
     const handleRemoveAssignmentClick = () => {
         if (!currentDocument || !contentEditableRef.current) {
-            console.error("Please select a document."); // Use console.error instead of alert
+            console.error("Please select a document.");
             return;
         }
 
@@ -1584,7 +1553,7 @@ const App = () => {
         }
 
         if (!targetNode || !contentEditableRef.current.contains(targetNode)) {
-            console.error("Please place your cursor or select text within an assigned block."); // Use console.error instead of alert
+            console.error("Please place your cursor or select text within an assigned block.");
             return;
         }
 
@@ -1609,7 +1578,7 @@ const App = () => {
         });
 
         if (blocksAtCursor.length === 0) {
-            console.error("No assigned text blocks found at the current cursor position or within the selection."); // Use console.error instead of alert
+            console.error("No assigned text blocks found at the current cursor position or within the selection.");
             return;
         }
         savedSelectionRange.current = saveSelection(); // Save selection before opening modal
@@ -1617,32 +1586,33 @@ const App = () => {
         setIsRemoveAssignmentModalOpen(true);
     };
 
-    const handleRemoveAssignedBlock = (blockIdToRemove) => {
+    const handleRemoveAssignedBlock = async (blockIdToRemove) => {
         const editorElement = contentEditableRef.current;
         const assignedSpan = editorElement.querySelector(`span[data-assigned-block-id="${blockIdToRemove}"]`);
 
+        // Optimistic UI update
         if (assignedSpan) {
-            // Restore selection if it was saved before modal opened
             if (savedSelectionRange.current) {
                 restoreSelection(savedSelectionRange.current);
-                savedSelectionRange.current = null; // Clear after restoring
+                savedSelectionRange.current = null;
             }
-
             const children = Array.from(assignedSpan.childNodes);
-
             children.forEach(child => {
                 assignedSpan.parentNode.insertBefore(child, assignedSpan);
             });
             assignedSpan.parentNode.removeChild(assignedSpan);
-
-            editorElement.normalize(); // Clean up merged text nodes
+            editorElement.normalize();
         }
 
         setAssignedTextBlocks(prev => prev.filter(block => block.id !== blockIdToRemove));
+        handleContentInput(); // Sync state with DOM and backend
 
-        handleContentInput(); // Sync state with DOM
-        // No need to save selection again here; the useEffect for cursor will handle it if needed
-        // or the native contenteditable behavior takes over.
+        try {
+            await apiFetch(`/assignedTextBlocks/${blockIdToRemove}`, { method: 'DELETE' });
+        } catch (error) {
+            console.error('Error removing assigned text block from backend:', error);
+            // Implement a more robust rollback if needed
+        }
 
         if (blocksAtCursor.length <= 1) {
             setIsRemoveAssignmentModalOpen(false);
@@ -1808,7 +1778,6 @@ const App = () => {
                         setCurrentDocumentId(entity.link);
                     } else {
                         console.warn("Entity link target document not found:", entity.link);
-                        // Replaced alert with console.warn
                     }
                 }
             }
@@ -1826,7 +1795,6 @@ const App = () => {
                     setCurrentDocumentId(docId);
                 } else {
                     console.warn("Crosslink target document not found:", docId);
-                    // Replaced alert with console.warn
                 }
             }
             return;
@@ -1845,7 +1813,6 @@ const App = () => {
                     setCurrentDocumentId(docId);
                 } else {
                     console.warn("Backlinked document not found:", docId);
-                    // Replaced alert with console.warn
                 }
             }
         }
@@ -1864,26 +1831,25 @@ const App = () => {
             element.click();
             document.body.removeChild(element);
         } else {
-            console.error("Please select a document to export."); // Use console.error instead of alert
+            console.error("Please select a document to export.");
         }
     };
 
-    const handleExportAllData = () => {
-        const dataToExport = {
-            documents: documents,
-            entities: entities,
-            assignedTextBlocks: assignedTextBlocks,
-            folders: folders,
-        };
-        const filename = `book_editor_backup_${Date.now()}.json`;
-        const element = document.createElement('a');
-        const file = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
-        element.href = URL.createObjectURL(file);
-        element.download = filename;
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-        URL.revokeObjectURL(element.href);
+    const handleExportAllData = async () => {
+        try {
+            const dataToExport = await apiFetch('/data'); // Fetch all current data from backend
+            const filename = `book_editor_backup_${Date.now()}.json`;
+            const element = document.createElement('a');
+            const file = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+            element.href = URL.createObjectURL(file);
+            element.download = filename;
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+            URL.revokeObjectURL(element.href);
+        } catch (error) {
+            console.error('Error exporting all data:', error);
+        }
     };
 
     // --- Import All Data (Documents & Entities) ---
@@ -1892,7 +1858,7 @@ const App = () => {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const importedData = JSON.parse(e.target.result);
                 if (importedData.documents && Array.isArray(importedData.documents) &&
@@ -1902,149 +1868,84 @@ const App = () => {
 
                     importedDataRef.current = importedData;
 
+                    // Since backend /api/import endpoint overwrites,
+                    // we just show a confirmation modal.
+                    // Collect IDs for display in the confirmation modal
                     const existingDocumentIds = new Set(documents.map(doc => doc.id));
                     const existingEntityIds = new Set(entities.map(entity => entity.id));
                     const existingTextBlockIds = new Set(assignedTextBlocks.map(block => block.id));
                     const existingFolderIds = new Set(folders.map(folder => folder.id));
-
 
                     const conflictingDocuments = importedData.documents.filter(doc => existingDocumentIds.has(doc.id));
                     const conflictingEntities = importedData.entities.filter(entity => existingEntityIds.has(entity.id));
                     const conflictingTextBlocks = importedData.assignedTextBlocks.filter(block => existingTextBlockIds.has(block.id));
                     const conflictingFolders = importedData.folders.filter(folder => existingFolderIds.has(folder.id));
 
+                    setConflictData({
+                        documents: conflictingDocuments,
+                        entities: conflictingEntities,
+                        textBlocks: conflictingTextBlocks,
+                        folders: conflictingFolders
+                    });
+                    setIsConflictModalOpen(true); // Open confirmation modal
 
-                    if (conflictingDocuments.length > 0 || conflictingEntities.length > 0 || conflictingTextBlocks.length > 0 || conflictingFolders.length > 0) {
-                        setConflictData({
-                            documents: conflictingDocuments,
-                            entities: conflictingEntities,
-                            textBlocks: conflictingTextBlocks,
-                            folders: conflictingFolders
-                        });
-                        setIsConflictModalOpen(true);
-                    } else {
-                        applyImportResolution({});
-                        console.log('No conflicts detected, data merged automatically.');
-                    }
 
                 } else {
-                    console.error('Invalid JSON structure: Expected "documents", "entities", "assignedTextBlocks", and "folders" arrays.'); // Use console.error instead of alert
+                    console.error('Invalid JSON structure: Expected "documents", "entities", "assignedTextBlocks", and "folders" arrays.');
                 }
             } catch (error) {
-                console.error('Failed to import data. Please ensure it is a valid JSON file.', error); // Use console.error instead of alert
+                console.error('Failed to import data. Please ensure it is a valid JSON file.', error);
             }
-            event.target.value = '';
+            event.target.value = ''; // Clear the file input
         };
         reader.onerror = (error) => {
-            console.error('Error reading file:', error); // Use console.error instead of alert
+            console.error('Error reading file:', error);
         };
         reader.readAsText(file);
     };
 
-    const applyImportResolution = (resolutions) => {
-        const importedData = importedDataRef.current;
-        if (!importedData) return;
-
-        let newDocuments = [...documents];
-        let newEntities = [...entities];
-        let newAssignedTextBlocks = [...assignedTextBlocks];
-        let newFolders = [...folders];
-
-        // Process documents
-        importedData.documents.forEach(importedDoc => {
-            const resolutionKey = `doc-${importedDoc.id}`;
-            const existingIndex = newDocuments.findIndex(doc => doc.id === importedDoc.id);
-            if (resolutions[resolutionKey] === 'overwrite') {
-                if (existingIndex !== -1) {
-                    newDocuments[existingIndex] = { ...importedDoc, folderId: importedDoc.folderId !== undefined ? importedDoc.folderId : null };
-                } else {
-                    newDocuments.push({ ...importedDoc, folderId: importedDoc.folderId !== undefined ? importedDoc.folderId : null });
-                }
-            } else if (resolutions[resolutionKey] !== 'keep_original') {
-                if (existingIndex !== -1) {
-                    // If no explicit resolution, assume keep original (or skip if exists)
-                    // For simplicity, if not overwrite, and exists, do nothing (keep original)
-                } else {
-                    newDocuments.push({ ...importedDoc, folderId: importedDoc.folderId !== undefined ? importedDoc.folderId : null });
-                }
-            }
-        });
-
-        // Process entities
-        importedData.entities.forEach(importedEntity => {
-            const resolutionKey = `entity-${importedEntity.id}`;
-            const existingIndex = newEntities.findIndex(entity => entity.id === importedEntity.id);
-            if (resolutions[resolutionKey] === 'overwrite') {
-                if (existingIndex !== -1) {
-                    newEntities[existingIndex] = { ...importedEntity, color: importedEntity.color || '#fffacd' };
-                } else {
-                    newEntities.push({ ...importedEntity, color: importedEntity.color || '#fffacd' });
-                }
-            } else if (resolutions[resolutionKey] !== 'keep_original') {
-                if (existingIndex !== -1) {
-                    // If no explicit resolution, assume keep original (or skip if exists)
-                } else {
-                    newEntities.push({ ...importedEntity, color: importedEntity.color || '#fffacd' });
-                }
-            }
-        });
-
-        // Process assigned text blocks
-        importedData.assignedTextBlocks.forEach(importedBlock => {
-            const resolutionKey = `textblock-${importedBlock.id}`;
-            const existingIndex = newAssignedTextBlocks.findIndex(block => block.id === importedBlock.id);
-            if (resolutions[resolutionKey] === 'overwrite') {
-                if (existingIndex !== -1) {
-                    newAssignedTextBlocks[existingIndex] = importedBlock;
-                } else {
-                    newAssignedTextBlocks.push(importedBlock);
-                }
-            } else if (resolutions[resolutionKey] !== 'keep_original') {
-                if (existingIndex !== -1) {
-                    // If no explicit resolution, assume keep original (or skip if exists)
-                } else {
-                    newAssignedTextBlocks.push(importedBlock);
-                }
-            }
-        });
-
-        // Process folders
-        importedData.folders.forEach(importedFolder => {
-            const resolutionKey = `folder-${importedFolder.id}`;
-            const existingIndex = newFolders.findIndex(folder => folder.id === importedFolder.id);
-            if (resolutions[resolutionKey] === 'overwrite') {
-                if (existingIndex !== -1) {
-                    newFolders[existingIndex] = importedFolder;
-                } else {
-                    newFolders.push(importedFolder);
-                }
-            } else if (resolutions[resolutionKey] !== 'keep_original') {
-                if (existingIndex !== -1) {
-                    // If no explicit resolution, assume keep original (or skip if exists)
-                } else {
-                    newFolders.push(importedFolder);
-                }
-            }
-        });
-
-
-        setDocuments(newDocuments);
-        setEntities(newEntities);
-        setAssignedTextBlocks(newAssignedTextBlocks);
-        setFolders(newFolders);
-
-        if (newDocuments.length > 0) {
-            const currentDocStillExists = newDocuments.some(doc => doc.id === currentDocumentId);
-            if (!currentDocStillExists) {
-                setCurrentDocumentId(newDocuments[0].id);
-            }
-        } else {
-            setCurrentDocumentId(null);
+    // Simplified applyImportResolution to send data to the new /api/import endpoint
+    const applyImportResolution = async (confirmOverwrite) => {
+        if (!confirmOverwrite || !importedDataRef.current) {
+            setIsConflictModalOpen(false);
+            importedDataRef.current = null;
+            console.log('Import cancelled by user or not confirmed.');
+            return;
         }
 
-        setIsConflictModalOpen(false);
-        importedDataRef.current = null;
+        try {
+            // Send the entire imported data object to the new bulk import endpoint
+            await apiFetch('/import', {
+                method: 'POST',
+                body: JSON.stringify(importedDataRef.current),
+            });
+            console.log('Bulk data import successful!');
+
+            // Re-fetch all data to ensure UI is in sync with backend after mass updates
+            const refreshedData = await apiFetch('/data');
+            setDocuments(refreshedData.documents || []);
+            setFolders(refreshedData.folders || []);
+            setEntities(refreshedData.entities || []);
+            setAssignedTextBlocks(refreshedData.assignedTextBlocks || []);
+
+            if (refreshedData.documents.length > 0) {
+                const currentDocStillExists = refreshedData.documents.some(doc => doc.id === currentDocumentId);
+                if (!currentDocStillExists) {
+                    setCurrentDocumentId(refreshedData.documents[0].id);
+                }
+            } else {
+                setCurrentDocumentId(null);
+            }
+
+        } catch (error) {
+            console.error('Error during bulk data import application:', error);
+            // Optionally, notify the user about the failure
+        } finally {
+            setIsConflictModalOpen(false);
+            importedDataRef.current = null;
+        }
     };
+
 
     const handleConflictModalCancel = () => {
         setIsConflictModalOpen(false);
@@ -2129,9 +2030,9 @@ const App = () => {
 
 
     // --- Insert Backlinks for an Entity ---
-    const handleInsertBacklinks = (entityId) => {
+    const handleInsertBacklinks = async (entityId) => {
         if (!contentEditableRef.current || !currentDocument) {
-            console.error("Please select a document to insert backlinks into."); // Use console.error instead of alert
+            console.error("Please select a document to insert backlinks into.");
             return;
         }
 
@@ -2139,7 +2040,7 @@ const App = () => {
         const entity = entities.find(e => e.id === entityId);
 
         if (!entity || relatedBlocks.length === 0) {
-            console.error(`No text blocks assigned to "${entity ? entity.primaryName : 'this entity'}".`); // Use console.error instead of alert
+            console.error(`No text blocks assigned to "${entity ? entity.primaryName : 'this entity'}".`);
             return;
         }
 
@@ -2206,14 +2107,14 @@ const App = () => {
             selection.addRange(range);
         }
 
-        handleContentInput(); // Sync updated DOM with React state
+        await handleContentInput(); // Sync updated DOM with React state and backend
         setOpenDropdownEntityId(null);
     };
 
     // --- Function to refresh all backlink blocks in the current document ---
-    const handleRefreshAllBacklinks = () => {
+    const handleRefreshAllBacklinks = async () => {
         if (!contentEditableRef.current || !currentDocument) {
-            console.error("No document selected to refresh backlinks."); // Use console.error instead of alert
+            console.error("No document selected to refresh backlinks.");
             return;
         }
 
@@ -2237,7 +2138,7 @@ const App = () => {
                 if (relatedBlocks.length === 0) {
                     newBacklinksContent += `<li style="margin-bottom: 5px; color: #666;">No assigned text blocks found for this entity.</li>`;
                 } else {
-                    relatedBlocks.forEach(block => {
+                    relatedBacklinks.forEach(block => {
                         const sourceDoc = documents.find(doc => doc.id === block.documentId);
                         const docTitle = sourceDoc ? sourceDoc.title : 'Unknown Document';
                         newBacklinksContent += `
@@ -2268,13 +2169,13 @@ const App = () => {
         });
 
         if (contentChanged) {
-            handleContentInput(); // Sync updated DOM with React state
+            await handleContentInput(); // Sync updated DOM with React state and backend
             if (currentSelection) { // Restore original cursor position
                 restoreSelection(currentSelection);
             }
-            console.log("Backlinks refreshed!"); // Use console.log instead of alert
+            console.log("Backlinks refreshed!");
         } else {
-            console.log("No backlinks found or no changes needed."); // Use console.log instead of alert
+            console.log("No backlinks found or no changes needed.");
         }
     };
 
@@ -2420,42 +2321,45 @@ const App = () => {
                                                 className={`flex items-center justify-between p-3 mb-2 rounded-md cursor-pointer transition duration-200
                                                     ${item.data.id === currentDocumentId ? 'bg-indigo-700' : 'bg-gray-700 hover:bg-gray-600'}`}
                                             >
-                                                {editingDocument && editingDocument.id === item.data.id ? (
-                                                    <input
-                                                        type="text"
-                                                        value={editingDocument.title}
-                                                        onChange={(e) => setEditingDocument({ ...editingDocument, title: e.target.value })}
-                                                        onBlur={() => saveEditedDocument(item.data.id, editingDocument.title)}
-                                                        onKeyPress={(e) => {
-                                                            if (e.key === 'Enter') {
-                                                                saveEditedDocument(item.data.id, editingDocument.title);
-                                                                e.target.blur(); // Remove focus
-                                                            }
-                                                        }}
-                                                        className="flex-grow p-1 rounded-md bg-gray-600 text-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                                                        autoFocus
-                                                    />
-                                                ) : (
-                                                    <span onClick={() => handleDocumentSelect(item.data.id)} className="flex-grow text-lg flex items-center">
-                                                        <FileText className="h-5 w-5 mr-2" /> {item.data.title}
-                                                    </span>
-                                                )}
-                                                <div className="flex items-center space-x-2">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); startEditDocument(item.data); }}
-                                                        className="text-yellow-400 hover:text-yellow-300"
-                                                        title="Edit Document"
-                                                    >
-                                                        <Pencil className="h-5 w-5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleDeleteDocument(item.data.id); }}
-                                                        className="text-red-400 hover:text-red-300"
-                                                        title="Delete Document"
-                                                    >
-                                                        <Trash2 className="h-5 w-5" />
-                                                    </button>
-                                                </div>
+                                                {/* Corrected: Wrap the conditional content and buttons in a React.Fragment */}
+                                                <>
+                                                    {editingDocument && editingDocument.id === item.data.id ? (
+                                                        <input
+                                                            type="text"
+                                                            value={editingDocument.title}
+                                                            onChange={(e) => setEditingDocument({ ...editingDocument, title: e.target.value })}
+                                                            onBlur={() => saveEditedDocument(item.data.id, editingDocument.title)}
+                                                            onKeyPress={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    saveEditedDocument(item.data.id, editingDocument.title);
+                                                                    e.target.blur(); // Remove focus
+                                                                }
+                                                            }}
+                                                            className="flex-grow p-1 rounded-md bg-gray-600 text-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                                            autoFocus
+                                                        />
+                                                    ) : (
+                                                        <span onClick={() => handleDocumentSelect(item.data.id)} className="flex-grow text-lg flex items-center">
+                                                            <FileText className="h-5 w-5 mr-2" /> {item.data.title}
+                                                        </span>
+                                                    )}
+                                                    <div className="flex items-center space-x-2">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); startEditDocument(item.data); }}
+                                                            className="text-yellow-400 hover:text-yellow-300"
+                                                            title="Edit Document"
+                                                        >
+                                                            <Pencil className="h-5 w-5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleDeleteDocument(item.data.id); }}
+                                                            className="text-red-400 hover:text-red-300"
+                                                            title="Delete Document"
+                                                        >
+                                                            <Trash2 className="h-5 w-5" />
+                                                        </button>
+                                                    </div>
+                                                </>
                                             </div>
                                         )
                                     ))
@@ -2688,277 +2592,277 @@ const App = () => {
 
                     {showEntitiesSidebar && (
                         <>
-                        {/* Entity Search Field */}
-                        <div className="mb-4">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search entities..."
-                                    className="w-full p-2 pl-10 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    value={entitySearchQuery}
-                                    onChange={(e) => setEntitySearchQuery(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <div className="mb-4 space-y-2">
-                            <input
-                                type="text"
-                                placeholder="Primary Name (e.g., John Doe)"
-                                className="w-full p-2 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                value={newEntityPrimaryName}
-                                onChange={(e) => setNewEntityPrimaryName(e.target.value)}
-                            />
-                            <div className="flex items-center space-x-2">
-                                <input
-                                    type="text"
-                                    placeholder="Add new alias"
-                                    className="flex-grow p-2 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    value={newAliasInput}
-                                    onChange={(e) => setNewAliasInput(e.target.value)}
-                                    onKeyPress={(e) => {
-                                        if (e.key === 'Enter') handleAddNewAlias();
-                                    }}
-                                />
-                                <button
-                                    onClick={handleAddNewAlias}
-                                    className="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-200"
-                                >
-                                    <Plus className="inline-block h-5 w-5" /> Alias
-                                </button>
-                            </div>
-                            {newEntityAliases.length > 0 && (
-                                <div className="flex flex-col gap-2 mt-2">
-                                    {newEntityAliases.map((alias) => (
-                                        <div key={alias.id} className="flex items-center space-x-2 bg-gray-700 p-2 rounded-md">
-                                            <input
-                                                type="text"
-                                                value={alias.name}
-                                                onChange={(e) => handleUpdateAlias(alias.id, e.target.value)}
-                                                onBlur={(e) => handleUpdateAlias(alias.id, e.target.value)}
-                                                onKeyPress={(e) => {
-                                                    if (e.key === 'Enter') e.target.blur();
-                                                }}
-                                                className="flex-grow bg-gray-600 text-white rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400"
-                                            />
-                                            <button
-                                                onClick={() => handleRemoveAlias(alias.id)}
-                                                className="text-red-400 hover:text-red-300"
-                                                title="Remove Alias"
-                                            >
-                                                <X className="h-5 w-5" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <div className="flex items-center space-x-2 mt-2">
-                                <label htmlFor="entityColor" className="text-gray-300">Highlight Color:</label>
-                                <input
-                                    type="color"
-                                    id="entityColor"
-                                    className="p-1 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
-                                    value={newEntityColor}
-                                    onChange={(e) => setNewEntityColor(e.target.value)}
-                                />
-                            </div>
-                            <textarea
-                                placeholder="Description"
-                                className="w-full p-2 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                value={newEntityDescription}
-                                onChange={(e) => setNewEntityDescription(e.target.value)}
-                                rows="3"
-                            />
-                            <div className="mb-2">
-                                <label className="inline-flex items-center cursor-pointer">
+                            {/* Entity Search Field */}
+                            <div className="mb-4">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                                     <input
-                                        type="checkbox"
-                                        className="form-checkbox h-5 w-5 text-purple-600 rounded"
-                                        checked={isExternalLink}
-                                        onChange={(e) => setIsExternalLink(e.target.checked)}
+                                        type="text"
+                                        placeholder="Search entities..."
+                                        className="w-full p-2 pl-10 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        value={entitySearchQuery}
+                                        onChange={(e) => setEntitySearchQuery(e.target.value)}
                                     />
-                                    <span className="ml-2 text-gray-300">Link to External URL</span>
-                                </label>
+                                </div>
                             </div>
-                            {isExternalLink ? (
+                            <div className="mb-4 space-y-2">
                                 <input
                                     type="text"
-                                    placeholder="External URL (e.g., https://example.com)"
+                                    placeholder="Primary Name (e.g., John Doe)"
                                     className="w-full p-2 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    value={newEntityLink}
-                                    onChange={(e) => setNewEntityLink(e.target.value)}
+                                    value={newEntityPrimaryName}
+                                    onChange={(e) => setNewEntityPrimaryName(e.target.value)}
                                 />
-                            ) : (
-                                <select
-                                    className="w-full p-2 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                    value={newEntityLink}
-                                    onChange={(e) => setNewEntityLink(e.target.value)}
-                                >
-                                    <option value="">Select a document to link</option>
-                                    {documents.map(doc => (
-                                        <option key={doc.id} value={doc.id}>{doc.title}</option>
-                                    ))}
-                                </select>
-                            )}
-                            <button
-                                onClick={handleSaveEntity}
-                                className="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-200"
-                            >
-                                {editingEntity ? 'Update Entity' : 'Create Entity'}
-                            </button>
-                            {editingEntity && (
-                                <button
-                                    onClick={clearEntityForm}
-                                    className="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-200"
-                                >
-                                    Cancel Edit
-                                </button>
-                            )}
-                        </div>
-                        <div className="flex-grow overflow-y-auto pr-2">
-                            {filteredEntities.length === 0 ? (
-                                <p className="text-gray-400">No entities found.</p>
-                            ) : (
-                                filteredEntities.map(entity => (
-                                    <div
-                                        key={entity.id}
-                                        className="flex flex-col p-3 mb-2 bg-gray-700 rounded-md shadow-sm"
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Add new alias"
+                                        className="flex-grow p-2 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        value={newAliasInput}
+                                        onChange={(e) => setNewAliasInput(e.target.value)}
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter') handleAddNewAlias();
+                                        }}
+                                    />
+                                    <button
+                                        onClick={handleAddNewAlias}
+                                        className="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-200"
                                     >
-                                        <div className="flex items-center justify-between mb-2">
-                                            <h3 className="text-lg font-semibold text-purple-200">{entity.primaryName}</h3>
-                                            <div className="flex items-center space-x-2">
+                                        <Plus className="inline-block h-5 w-5" /> Alias
+                                    </button>
+                                </div>
+                                {newEntityAliases.length > 0 && (
+                                    <div className="flex flex-col gap-2 mt-2">
+                                        {newEntityAliases.map((alias) => (
+                                            <div key={alias.id} className="flex items-center space-x-2 bg-gray-700 p-2 rounded-md">
+                                                <input
+                                                    type="text"
+                                                    value={alias.name}
+                                                    onChange={(e) => handleUpdateAlias(alias.id, e.target.value)}
+                                                    onBlur={(e) => handleUpdateAlias(alias.id, e.target.value)}
+                                                    onKeyPress={(e) => {
+                                                        if (e.key === 'Enter') e.target.blur();
+                                                    }}
+                                                    className="flex-grow bg-gray-600 text-white rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                                                />
                                                 <button
-                                                    onClick={() => handleInsertEntity(entity, entity.primaryName, 'primary')}
-                                                    className="bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 text-sm rounded-md shadow-sm transition duration-200"
-                                                    title="Insert Primary Name"
-                                                >
-                                                    Insert
-                                                </button>
-
-                                                {entity.aliases && entity.aliases.length > 0 && (
-                                                    <div className="relative">
-                                                        <button
-                                                            onClick={() => setOpenDropdownEntityId(openDropdownEntityId === entity.id ? null : entity.id)}
-                                                            className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-1 px-2 text-sm rounded-md shadow-sm transition duration-200 flex items-center"
-                                                            title="Insert Alias"
-                                                        >
-                                                            Alias
-                                                            <ChevronRight className="h-4 w-4 ml-1 transform rotate-90" />
-                                                        </button>
-                                                        {openDropdownEntityId === entity.id && (
-                                                            <ul className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg z-10 overflow-hidden">
-                                                                {entity.aliases.map(alias => (
-                                                                    <li
-                                                                        key={alias.id}
-                                                                        onClick={() => {
-                                                                            handleInsertEntity(entity, alias.name, 'alias', alias.id);
-                                                                            setOpenDropdownEntityId(null);
-                                                                        }}
-                                                                        className="px-4 py-2 text-sm text-white hover:bg-gray-600 cursor-pointer"
-                                                                    >
-                                                                        {alias.name}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                <button
-                                                    onClick={() => handleInsertBacklinks(entity.id)}
-                                                    className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-1 px-2 text-sm rounded-md shadow-sm transition duration-200"
-                                                    title="Insert backlinks for this entity"
-                                                >
-                                                    Backlinks
-                                                </button>
-
-                                                <button
-                                                    onClick={() => startEditEntity(entity)}
-                                                    className="text-yellow-400 hover:text-yellow-300"
-                                                    title="Edit"
-                                                >
-                                                    <Pencil className="h-5 w-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteEntity(entity.id)}
+                                                    onClick={() => handleRemoveAlias(alias.id)}
                                                     className="text-red-400 hover:text-red-300"
-                                                    title="Delete"
+                                                    title="Remove Alias"
                                                 >
-                                                    <Trash2 className="h-5 w-5" />
+                                                    <X className="h-5 w-5" />
                                                 </button>
                                             </div>
-                                        </div>
+                                        ))}
                                     </div>
-                                        ))
-                                        )}
-                                    </div>
-                                </>
                                 )}
-                        </div>
-                        </div>
+                                <div className="flex items-center space-x-2 mt-2">
+                                    <label htmlFor="entityColor" className="text-gray-300">Highlight Color:</label>
+                                    <input
+                                        type="color"
+                                        id="entityColor"
+                                        className="p-1 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                                        value={newEntityColor}
+                                        onChange={(e) => setNewEntityColor(e.target.value)}
+                                    />
+                                </div>
+                                <textarea
+                                    placeholder="Description"
+                                    className="w-full p-2 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    value={newEntityDescription}
+                                    onChange={(e) => setNewEntityDescription(e.target.value)}
+                                    rows="3"
+                                />
+                                <div className="mb-2">
+                                    <label className="inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="form-checkbox h-5 w-5 text-purple-600 rounded"
+                                            checked={isExternalLink}
+                                            onChange={(e) => setIsExternalLink(e.target.checked)}
+                                        />
+                                        <span className="ml-2 text-gray-300">Link to External URL</span>
+                                    </label>
+                                </div>
+                                {isExternalLink ? (
+                                    <input
+                                        type="text"
+                                        placeholder="External URL (e.g., https://example.com)"
+                                        className="w-full p-2 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        value={newEntityLink}
+                                        onChange={(e) => setNewEntityLink(e.target.value)}
+                                    />
+                                ) : (
+                                    <select
+                                        className="w-full p-2 rounded-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        value={newEntityLink}
+                                        onChange={(e) => setNewEntityLink(e.target.value)}
+                                    >
+                                        <option value="">Select a document to link</option>
+                                        {documents.map(doc => (
+                                            <option key={doc.id} value={doc.id}>{doc.title}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <button
+                                    onClick={handleSaveEntity}
+                                    className="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-200"
+                                >
+                                    {editingEntity ? 'Update Entity' : 'Create Entity'}
+                                </button>
+                                {editingEntity && (
+                                    <button
+                                        onClick={clearEntityForm}
+                                        className="mt-2 w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-200"
+                                    >
+                                        Cancel Edit
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex-grow overflow-y-auto pr-2">
+                                {filteredEntities.length === 0 ? (
+                                    <p className="text-gray-400">No entities found.</p>
+                                ) : (
+                                    filteredEntities.map(entity => (
+                                        <div
+                                            key={entity.id}
+                                            className="flex flex-col p-3 mb-2 bg-gray-700 rounded-md shadow-sm"
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h3 className="text-lg font-semibold text-purple-200">{entity.primaryName}</h3>
+                                                <div className="flex items-center space-x-2">
+                                                    <button
+                                                        onClick={() => handleInsertEntity(entity, entity.primaryName, 'primary')}
+                                                        className="bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 text-sm rounded-md shadow-sm transition duration-200"
+                                                        title="Insert Primary Name"
+                                                    >
+                                                        Insert
+                                                    </button>
 
-                    {/* Conflict Resolution Modal */}
-                        <ConflictResolutionModal
-                        isOpen={isConflictModalOpen}
-                     conflicts={conflictData}
-                     onResolve={applyImportResolution}
-                     onCancel={handleConflictModalCancel}
-                />
+                                                    {entity.aliases && entity.aliases.length > 0 && (
+                                                        <div className="relative">
+                                                            <button
+                                                                onClick={() => setOpenDropdownEntityId(openDropdownEntityId === entity.id ? null : entity.id)}
+                                                                className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-1 px-2 text-sm rounded-md shadow-sm transition duration-200 flex items-center"
+                                                                title="Insert Alias"
+                                                            >
+                                                                Alias
+                                                                <ChevronRight className="h-4 w-4 ml-1 transform rotate-90" />
+                                                            </button>
+                                                            {openDropdownEntityId === entity.id && (
+                                                                <ul className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg z-10 overflow-hidden">
+                                                                    {entity.aliases.map(alias => (
+                                                                        <li
+                                                                            key={alias.id}
+                                                                            onClick={() => {
+                                                                                handleInsertEntity(entity, alias.name, 'alias', alias.id);
+                                                                                setOpenDropdownEntityId(null);
+                                                                            }}
+                                                                            className="px-4 py-2 text-sm text-white hover:bg-gray-600 cursor-pointer"
+                                                                        >
+                                                                            {alias.name}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleInsertBacklinks(entity.id)}
+                                                        className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-1 px-2 text-sm rounded-md shadow-sm transition duration-200"
+                                                        title="Insert backlinks for this entity"
+                                                    >
+                                                        Backlinks
+                                                    </button>
 
-                {/* Entity Selection Modal for Text Assignment */}
-                <EntitySelectionModal
-                    isOpen={isEntitySelectionModalOpen}
-                    entities={entities}
-                    onSelectEntity={handleSelectEntityForAssignment}
-                    onCancel={handleCancelEntitySelection}
-                />
+                                                    <button
+                                                        onClick={() => startEditEntity(entity)}
+                                                        className="text-yellow-400 hover:text-yellow-300"
+                                                        title="Edit"
+                                                    >
+                                                        <Pencil className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteEntity(entity.id)}
+                                                        className="text-red-400 hover:text-red-300"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
 
-                {/* Remove Assignment Modal */}
-                <RemoveAssignmentModal
-                    isOpen={isRemoveAssignmentModalOpen}
-                    blocks={blocksAtCursor}
-                    onRemoveBlock={handleRemoveAssignedBlock}
-                    onCancel={handleCancelRemoveAssignment}
-                />
+            {/* Conflict Resolution Modal (now simplified for confirmation) */}
+            <ConflictResolutionModal
+                isOpen={isConflictModalOpen}
+                conflicts={conflictData} // Still pass conflicts for display
+                onResolve={applyImportResolution}
+                onCancel={handleConflictModalCancel}
+            />
 
-                {/* Create Document Modal */}
-                <CreateDocumentModal
-                    isOpen={isCreateDocumentModalOpen}
-                    folders={folders}
-                    onCreate={handleCreateDocument}
-                    onCancel={() => setIsCreateDocumentModalOpen(false)}
-                />
+            {/* Entity Selection Modal for Text Assignment */}
+            <EntitySelectionModal
+                isOpen={isEntitySelectionModalOpen}
+                entities={entities}
+                onSelectEntity={handleSelectEntityForAssignment}
+                onCancel={handleCancelEntitySelection}
+            />
 
-                {/* Create Folder Modal */}
-                <CreateFolderModal
-                    isOpen={isCreateFolderModalOpen}
-                    folders={folders}
-                    onCreate={handleCreateFolder}
-                    onCancel={() => setIsCreateFolderModalOpen(false)}
-                />
+            {/* Remove Assignment Modal */}
+            <RemoveAssignmentModal
+                isOpen={isRemoveAssignmentModalOpen}
+                blocks={blocksAtCursor}
+                onRemoveBlock={handleRemoveAssignedBlock}
+                onCancel={handleCancelRemoveAssignment}
+            />
 
-                {/* Link Modal */}
-                <LinkModal
-                    isOpen={isLinkModalOpen}
-                    onConfirm={handleConfirmLink}
-                    onCancel={() => { setIsLinkModalOpen(false); savedSelectionRange.current = null; }}
-                />
+            {/* Create Document Modal */}
+            <CreateDocumentModal
+                isOpen={isCreateDocumentModalOpen}
+                folders={folders}
+                onCreate={handleCreateDocument}
+                onCancel={() => setIsCreateDocumentModalOpen(false)}
+            />
 
-                {/* Image Modal */}
-                <ImageModal
-                    isOpen={isImageModalOpen}
-                    onConfirm={handleConfirmImage}
-                    onCancel={() => { setIsImageModalOpen(false); savedSelectionRange.current = null; }}
-                />
+            {/* Create Folder Modal */}
+            <CreateFolderModal
+                isOpen={isCreateFolderModalOpen}
+                folders={folders}
+                onCreate={handleCreateFolder}
+                onCancel={() => setIsCreateFolderModalOpen(false)}
+            />
 
-                {/* Shortcuts Modal */}
-                <ShortcutsModal
-                    isOpen={showShortcutsModal}
-                    onClose={() => setShowShortcutsModal(false)}
-                />
+            {/* Link Modal */}
+            <LinkModal
+                isOpen={isLinkModalOpen}
+                onConfirm={handleConfirmLink}
+                onCancel={() => { setIsLinkModalOpen(false); savedSelectionRange.current = null; }}
+            />
 
-                {/* Global Styles for Assigned Text Blocks and Fonts*/}
-                <style>
-                    {`
+            {/* Image Modal */}
+            <ImageModal
+                isOpen={isImageModalOpen}
+                onConfirm={handleConfirmImage}
+                onCancel={() => { setIsImageModalOpen(false); savedSelectionRange.current = null; }}
+            />
+
+            {/* Shortcuts Modal */}
+            <ShortcutsModal
+                isOpen={showShortcutsModal}
+                onClose={() => setShowShortcutsModal(false)}
+            />
+
+            {/* Global Styles for Assigned Text Blocks and Fonts*/}
+            <style>
+                {`
                 .assigned-text-block {
                     border-radius: 4px;
                     padding: 0 2px;
@@ -3020,9 +2924,9 @@ const App = () => {
                 .editor-content a { color: #2563eb; text-decoration: underline; cursor: pointer; }
                 .editor-content img { max-width: 100%; height: auto; display: block; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
                 `}
-                </style>
-            </div>
-            );
-            };
+            </style>
+        </div>
+    );
+};
 
-            export default App;
+export default App;
